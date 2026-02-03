@@ -34,23 +34,26 @@ private:
     string text_content = "%title{document}\n\nLorem ipsum dolor sit amet.\n\n%bib{}";
     vector<pair<string, bool>> lines;
     size_t cursor_index = 0;
-    int scroll = 0;
     Vec2 cursor_position = { 0, 0 };
+    size_t selection_end_index = 0;
+    Vec2 selection_end_position = { 0, 0 };
+    int scroll = 0;
+
     string info_text = "ready.";
     int listening_for_hotkey = 0;
     bool is_popup_active = false;
     int popup_index = 0;
 
-    // TODO: selection
     // TODO: copy/cut/paste
     
     // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line)
     // TODO: figure popup, citation popup and list/bibliography
-    // TODO: pdf generation
-    // TODO: concrete specification
     // TODO: load/save files
     // TODO: load popup on launch
+
     // TODO: more colours, custom themes
+    // TODO: pdf generation
+    // TODO: concrete specification
 
 public:
     void textEvent(unsigned int chr)
@@ -67,10 +70,12 @@ public:
 
         if (chr != '\\')
         {
+            if (selection_end_index != cursor_index)
+                eraseSelection();
             text_content.insert(text_content.begin() + cursor_index, (char)chr);
             ++cursor_index;
         }
-
+        clearSelection();
         updateLines();
     }
 
@@ -93,52 +98,10 @@ public:
                 listening_for_hotkey = 0;
             else if (listening_for_hotkey == 2)
             {
-                info_text = "ready.";
-                switch (evt.key)
-                {
-                case 'C':
-                    is_popup_active = true;
-                    popup_index = 2;
-                    listening_for_hotkey = 0;
-                    info_text = "showing citation selector.";
-
-                    //text_content.insert(cursor_index, "%cite{}");
-                    //cursor_index += strlen("%cite{}"); // TODO: citation
-                    break;
-                case 'B':
-                    break; // TODO: bold, possibly selection
-                case 'F':
-                    is_popup_active = true;
-                    popup_index = 1;
-                    listening_for_hotkey = 0;
-                    info_text = "showing figure selector.";
-
-                    //text_content.insert(cursor_index, "%fig{}");
-                    //cursor_index += strlen("%fig{}");
-                    break; // TODO: figure
-                case 'I': 
-                    break; // TODO: italic
-                case 'M':
-                    text_content.insert(cursor_index, "%math{}");
-                    cursor_index += strlen("%math{}");
-                    break; // TODO: math
-                case 'X':
-                    text_content.insert(cursor_index, "%code{}");
-                    cursor_index += strlen("%code{}");
-                    break; // TODO: code block
-                case '\\':
-                    text_content.insert(text_content.begin() + cursor_index, '\\');
-                    ++cursor_index;
-                    break;
-                default:
-                    info_text = "unrecognised hotkey.";
-                    break;
-                }
-                listening_for_hotkey = 1;
-                updateLines();
+                handleHotkeyFollowup(evt);
                 return;
             }
-
+           
             switch (evt.key)
             {
             case 'H':
@@ -155,27 +118,40 @@ public:
                 info_text = "waiting for hotkey...";
                 break;
             case 259: // backspace
-                if (cursor_index > 0)
+                if (selection_end_index != cursor_index)
+                    eraseSelection();
+                else if (cursor_index > 0)
                 {
                     text_content.erase(text_content.begin() + cursor_index - 1);
                     --cursor_index;
                 }
+                clearSelection();
                 break;
             case 261: // delete
-                text_content.erase(text_content.begin() + cursor_index);
+                if (selection_end_index != cursor_index)
+                    eraseSelection();
+                else
+                    text_content.erase(text_content.begin() + cursor_index);
+                clearSelection();
                 break;
             case 263: // left arrow
                 if (cursor_index > 0)
                     --cursor_index;
+                if (!(evt.modifiers & KeyEvent::SHIFT))
+                    clearSelection();
                 break;
             case 262: // right arrow
                 if (cursor_index < text_content.size())
                     ++cursor_index;
+                if (!(evt.modifiers & KeyEvent::SHIFT))
+                    clearSelection();
                 break;
             case 265: // up arrow
                 if (evt.modifiers & KeyEvent::ALT)
                 {
                     cursor_index = 0;
+                    if (!(evt.modifiers & KeyEvent::SHIFT))
+                        clearSelection();
                     break;
                 }
                 if (evt.modifiers & KeyEvent::CTRL)
@@ -184,16 +160,21 @@ public:
                     {
                         --scroll;
                         cursorRecedeLine();
+                        clearSelection();
                     }
                     break;
                 }
 
                 cursorRecedeLine();
+                if (!(evt.modifiers & KeyEvent::SHIFT))
+                    clearSelection();
                 break;
             case 264: // down arrow
                 if (evt.modifiers & KeyEvent::ALT)
                 {
                     cursor_index = text_content.size();
+                    if (!(evt.modifiers & KeyEvent::SHIFT))
+                        clearSelection();
                     break;
                 }
                 if (evt.modifiers & KeyEvent::CTRL)
@@ -202,15 +183,17 @@ public:
                     {
                         ++scroll;
                         cursorAdvanceLine();
+                        clearSelection();
                     }
                     break;
                 }
 
                 cursorAdvanceLine();
+                if (!(evt.modifiers & KeyEvent::SHIFT))
+                    clearSelection();
                 break;
             case 257: // enter/newline
-                text_content.insert(text_content.begin() + cursor_index, '\n');
-                ++cursor_index;
+                textEvent('\n');
                 break;
             }
             updateLines();
@@ -243,11 +226,25 @@ public:
                 show_next_line = false;
         }
 
-        // cursor
-        char hovered_char = text_content[cursor_index];
-        if (!isRenderable(hovered_char))
-            hovered_char = ' ';
-        ctx.draw(cursor_position + Vec2{ 2, 2 - scroll }, hovered_char, 1);
+        // cursor and selection
+        if (selection_end_index != cursor_index)
+        {
+            Vec2 selection_pos = selection_end_position;
+            Vec2 end_pos = cursor_position;
+            if (cursor_index < selection_end_index)
+            {
+                selection_pos = cursor_position;
+                end_pos = selection_end_position;
+            }
+            while (selection_pos.y != end_pos.y)
+            {
+                ctx.fillColour(selection_pos + Vec2{ 2, 2 - scroll }, Vec2{ ctx.getSize().x - 4, 1 }, 2);
+                ++selection_pos.y;
+                selection_pos.x = 0;
+            }
+            ctx.fillColour(selection_pos + Vec2{ 2, 2 - scroll }, Vec2{ end_pos.x - selection_pos.x + 1, 1 }, 2);
+        }
+        ctx.drawColour(cursor_position + Vec2{ 2, 2 - scroll }, 1);
 
         // scrollbar
         int scrollbar_height = ctx.getSize().y - 3;
@@ -307,32 +304,63 @@ public:
         lines.push_back({ line, true });
 
         // recalculate cursor position based on index
-        cursor_position = { 0, 0 };
-        size_t i = cursor_index;
-        size_t line_length = 0;
-        if (cursor_position.y < lines.size())
-        {
-            line_length = lines[cursor_position.y].first.size();
-            if (lines[cursor_position.y].second)
-                ++line_length;
-        }
-        while (cursor_position.y < lines.size() && i >= line_length)
-        {
-            i -= line_length;
-            ++cursor_position.y;
+        cursor_position = calculatePosition(cursor_index);
+        if (selection_end_index == cursor_index)
+            selection_end_position = cursor_position;
+        else
+            selection_end_position = calculatePosition(selection_end_index);
 
-            if (cursor_position.y < lines.size())
-            {
-                line_length = lines[cursor_position.y].first.size();
-                if (lines[cursor_position.y].second)
-                    ++line_length;
-            }
-        }
-        cursor_position.x = i;
         fixScroll();
     }
 
 private:
+    void eraseSelection()
+    {
+        if (selection_end_index == cursor_index)
+            return;
+
+        // inclusive!
+        size_t min_index = selection_end_index;
+        size_t max_index = cursor_index - 1;
+        if (selection_end_index > cursor_index)
+        {
+            min_index = cursor_index + 1;
+            max_index = selection_end_index;
+        }
+        else
+            cursor_index = selection_end_index;
+
+        text_content.erase(min_index, (max_index - min_index) + 1);
+    }
+
+    Vec2 calculatePosition(size_t index)
+    {
+        Vec2 position = { 0, 0 };
+        size_t i = index;
+        size_t line_length = 0;
+        if (position.y < lines.size())
+        {
+            line_length = lines[position.y].first.size();
+            if (lines[position.y].second)
+                ++line_length;
+        }
+        while (position.y < lines.size() && i >= line_length)
+        {
+            i -= line_length;
+            ++position.y;
+
+            if (position.y < lines.size())
+            {
+                line_length = lines[position.y].first.size();
+                if (lines[position.y].second)
+                    ++line_length;
+            }
+        }
+        position.x = i;
+
+        return position;
+    }
+
     void fixScroll()
     {
         while (cursor_position.y - scroll >= transform.size.y - 5)
@@ -367,6 +395,62 @@ private:
         }
         else
             cursor_index = 0;
+    }
+
+    void handleHotkeyFollowup(KeyEvent& evt)
+    {
+        info_text = "ready.";
+        switch (evt.key)
+        {
+        case 'C':
+            is_popup_active = true;
+            popup_index = 2;
+            listening_for_hotkey = 0;
+            info_text = "showing citation selector.";
+
+            //text_content.insert(cursor_index, "%cite{}");
+            //cursor_index += strlen("%cite{}"); // TODO: citation
+            break;
+        case 'B':
+            break; // TODO: bold, possibly selection
+        case 'F':
+            is_popup_active = true;
+            popup_index = 1;
+            listening_for_hotkey = 0;
+            info_text = "showing figure selector.";
+
+            //text_content.insert(cursor_index, "%fig{}");
+            //cursor_index += strlen("%fig{}");
+            break; // TODO: figure
+        case 'I':
+            break; // TODO: italic
+        case 'M':
+            text_content.insert(cursor_index, "%math{}");
+            cursor_index += strlen("%math{}");
+            break; // TODO: math
+        case 'X':
+            text_content.insert(cursor_index, "%code{}");
+            cursor_index += strlen("%code{}");
+            break; // TODO: code block
+        case '\\':
+            if (selection_end_index != cursor_index)
+                eraseSelection();
+            text_content.insert(text_content.begin() + cursor_index, '\\');
+            ++cursor_index;
+            clearSelection();
+            break;
+        default:
+            info_text = "unrecognised hotkey.";
+            break;
+        }
+        listening_for_hotkey = 1;
+        updateLines();
+    }
+
+    void clearSelection()
+    {
+        selection_end_index = cursor_index;
+        selection_end_position = cursor_position;
     }
 
     void drawPopupHelp(Context& ctx)
@@ -405,6 +489,11 @@ private:
 int main()
 {
     NativeRasteriser comp;
+    comp.setPalette(Palette{
+        DEFAULT_COLOUR,
+        DEFAULT_INVERTED,
+        FG_BLACK | BG_LIGHT_GREY
+        });
     comp.setScaleFactor(2.0f);
     EditorDrawable* e = new EditorDrawable();
     comp.insertDrawable(e);
