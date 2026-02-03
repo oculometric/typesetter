@@ -253,6 +253,7 @@ private:
     int mesh_index_count;
 
     std::queue<KeyEvent> pending_keys;
+    std::queue<unsigned int> pending_chars;
 
 public:
     NativeRasteriser();
@@ -265,11 +266,13 @@ public:
     
     bool update() override;
     KeyEvent getKeyEvent() override;
+    unsigned int getCharEvent();
     void present() override;
     
 private:
     Vec2 calculateSize() const;
     static void keyFunction(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void charFunction(GLFWwindow* window, unsigned int chr);
 };
 
 }

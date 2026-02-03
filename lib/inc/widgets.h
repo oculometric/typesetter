@@ -129,9 +129,41 @@ public:
     void setMinSize(const Vec2& value);
 };
 
-// TODO: size limiter
-// TODO: border
-// TODO: spacers
+class Border : public Widget
+{
+private:
+
+public:
+    Border(Widget* _child) { if (_child) children.push_back(_child); }
+
+    void arrange(Vec2 available_area) override;
+    void render(Context& ctx) const override;
+
+    Vec2 getMinSize() const override { if (children.empty()) return Vec2{ 2, 2 }; return children[0]->getMinSize() + Vec2{ 2, 2 }; }
+    Vec2 getMaxSize() const override
+    {
+        if (children.empty())
+            return Vec2{ -1, -1 };
+        
+        Vec2 size = children[0]->getMaxSize();
+        if (size.x != -1) size.x += 2;
+        if (size.y != -1) size.y += 2;
+        return size;
+    }
+};
+
+class Spacer : public Widget
+{
+private:
+    Vec2 size = Vec2{ 1, 1 };
+
+public:
+    Spacer(const Vec2& _size) : size(_size) { };
+
+    Vec2 getMinSize() const override { return size; }
+    Vec2 getMaxSize() const override { return size; }
+};
+
 // TODO: dividers
 // TODO: button
 // TODO: list view
