@@ -51,9 +51,7 @@ private:
     int last_change_type = 0; // 0 = regular character, 1 = delete
     chrono::steady_clock::time_point last_push;
 
-    // TODO: word separation flagging (for counting and walking) [30]
     // TODO: word/line count [10]
-    // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line) [45]
     // TODO: load/save files [60]
     // TODO: figure popup, citation popup and list/bibliography [120]
 
@@ -62,6 +60,11 @@ private:
     // TODO: pdf generation [240]
 
 public:
+    EditorDrawable()
+    {
+        pushUndoHistory();
+    }
+
     void textEvent(unsigned int chr)
     {
         if (is_popup_active)
@@ -216,13 +219,21 @@ public:
                 clearSelection();
                 break;
             case 263: // left arrow
-                if (cursor_index > 0)
+                if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
+                    cursor_index = findPrevWord(cursor_index);
+                else if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::ALT)
+                    cursor_index = findStartOfLine(cursor_index);
+                else if (cursor_index > 0)
                     --cursor_index;
                 if (!(evt.modifiers & KeyEvent::SHIFT))
                     clearSelection();
                 break;
             case 262: // right arrow
-                if (cursor_index < text_content.size())
+                if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
+                    cursor_index = findNextWord(cursor_index);
+                else if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::ALT)
+                    cursor_index = findEndOfLine(cursor_index);
+                else if (cursor_index < text_content.size())
                     ++cursor_index;
                 if (!(evt.modifiers & KeyEvent::SHIFT))
                     clearSelection();
@@ -633,9 +644,9 @@ private:
         // 2 = cut/paste/delete block
         if (change_type == 2)
             pushUndoHistory();
-        else if ((change_type != -1) && (change_type != last_change_type) && (changes_since_push > 10))
+        else if ((change_type != -1) && (change_type != last_change_type) && (changes_since_push > 5))
             pushUndoHistory();
-        else if (changes_since_push > 30)
+        else if (changes_since_push > 10)
             pushUndoHistory();
         else if (changes_since_push == 0)
         {
@@ -746,6 +757,80 @@ private:
             return format("{0:.1f} KiB", (float)bytes / 1024);
         else
             return format("{0} B", bytes);
+    }
+
+    int getCharacterType(size_t index)
+    {
+        char c = text_content[index];
+        if (c >= 'a' && c <= 'z')
+            return 0;
+        if (c >= 'A' && c <= 'Z')
+            return 0;
+        if (c >= '0' && c <= '9')
+            return 0;
+        if (c == ' ' || c == '\t' || c == '\n')
+            return 1;
+        return 2;
+    }
+
+    size_t findNextWord(size_t current)
+    {
+        int current_type = getCharacterType(current);
+        while ((current < text_content.size()) && ((getCharacterType(current) == current_type) || (getCharacterType(current) == 1)))
+        {
+            if (getCharacterType(current) == 1)
+                current_type = 1;
+            ++current;
+        }
+        return current;
+    }
+
+    size_t findPrevWord(size_t current)
+    {
+        if (current <= 1)
+            return 0;
+
+        int current_type = getCharacterType(current);
+        if (getCharacterType(current - 1) != getCharacterType(current) && getCharacterType(current - 1) != 1)
+        {
+            --current;
+            current_type = getCharacterType(current);
+        }
+        else if (getCharacterType(current - 1) == 1)
+            --current;
+        while (current > 0)
+        {
+            if (getCharacterType(current - 1) != current_type && getCharacterType(current) != 1)
+                break;
+            --current;
+        }
+        return current;
+    }
+
+    size_t findEndOfLine(size_t current)
+    {
+        while (current < text_content.size() && text_content[current] != '\n')
+            ++current;
+        return current;
+    }
+
+    size_t findStartOfLine(size_t current)
+    {
+        if (current <= 1)
+            return 0;
+
+        if (text_content[current] == '\n')
+        {
+            if (text_content[current - 1] == '\n')
+                return current;
+            else --current;
+        }
+
+        while (current > 0 && text_content[current] != '\n')
+            --current;
+        if (current == 0)
+            return current;
+        return current + 1;
     }
 };
 
