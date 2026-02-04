@@ -3,9 +3,12 @@
 #include <thread>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <fstream>
 
 #include <strn.h>
 #include <clipboardXX/clipboardxx.hpp>
+#include <portable-file-dialogs/portable-file-dialogs.h>
 
 const char* saturn_ascii = 
 " .             "
@@ -44,6 +47,7 @@ private:
     int listening_for_hotkey = 0;
     bool is_popup_active = true;
     int popup_index = -1;
+    int popup_option_index = 0;
 
     vector<string> undo_history;
     vector<string> redo_history;
@@ -51,7 +55,13 @@ private:
     int last_change_type = 0; // 0 = regular character, 1 = delete
     chrono::steady_clock::time_point last_push;
 
-    // TODO: load/save files [60]
+    size_t last_counted_words = 0;
+    chrono::steady_clock::time_point last_word_count;
+
+    string file_path = "untitled.tmd";
+    bool has_unsaved_changes = true;
+    bool needs_save_as = true;
+
     // TODO: figure popup, citation popup and list/bibliography [120]
 
     // TODO: more colours, custom themes [45]
@@ -63,6 +73,8 @@ public:
     {
         pushUndoHistory();
     }
+
+    // FIXME: reorganise code
 
     void textEvent(unsigned int chr)
     {
@@ -88,6 +100,7 @@ public:
             text_content.insert(text_content.begin() + cursor_index, (char)chr);
             ++cursor_index;
         }
+        flagUnsaved();
         clearSelection();
         updateLines();
     }
@@ -109,7 +122,8 @@ public:
                     listening_for_hotkey = 1;
                     info_text = "ready.";
                 }
-                // TODO: pass input to popup
+                if (popup_index == 3)
+                    keyEventPopupUnsavedConfirm(evt);
                 return;
             }
 
@@ -123,11 +137,31 @@ public:
            
             switch (evt.key)
             {
+            case 'S':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    triggerSave();
+                }
+                break;
+            case 'O':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    if (has_unsaved_changes)
+                    {
+                        is_popup_active = true;
+                        popup_index = 3;
+                        popup_option_index = 1;
+                    }
+                    else
+                        runFileOpenDialog();
+                }
+                break;
             case 'Z':
                 if (evt.modifiers == KeyEvent::CTRL)
                     popUndoHistory();
                 else if (evt.modifiers == (KeyEvent::CTRL | KeyEvent::SHIFT))
                     popRedoHistory();
+                flagUnsaved();
                 break;
             case 'H':
                 if (evt.modifiers == KeyEvent::CTRL)
@@ -166,6 +200,7 @@ public:
                         eraseSelection();
                     }
                     clearSelection();
+                    flagUnsaved();
                     info_text = "cut " + to_string(clipboard.size()) + " characters.";
                 }
                 break;
@@ -174,7 +209,7 @@ public:
                 {
                     string clipboard;
                     clipboardxx::clipboard c;
-                    c >> clipboard; // FIXME: replace \r with \n, unless \r\n
+                    c >> clipboard; // FIXME: replace \r with \n, unless \r\n, including on file load!!
                     if ((selection_end_index != cursor_index) || clipboard.size() > 0)
                         checkUndoHistoryState(2);
                     if (selection_end_index != cursor_index)
@@ -183,6 +218,7 @@ public:
                     text_content.insert(cursor_index, clipboard);
                     cursor_index += clipboard.size();
                     clearSelection();
+                    flagUnsaved();
                     info_text = "pasted " + to_string(clipboard.size()) + " characters.";
                 }
                 break;
@@ -205,6 +241,7 @@ public:
                     --cursor_index;
                 }
                 clearSelection();
+                flagUnsaved();
                 break;
             case 261: // delete
                 if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
@@ -220,6 +257,7 @@ public:
                     text_content.erase(text_content.begin() + cursor_index);
                 }
                 clearSelection();
+                flagUnsaved();
                 break;
             case 263: // left arrow
                 if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
@@ -323,7 +361,7 @@ public:
         }
 
         // header
-        ctx.drawText({ 1, 0 }, "[ TYPECETTER ] - editing <filename>");
+        ctx.drawText({ 1, 0 }, "[ TYPECETTER ] - editing " + filesystem::path(file_path).filename().string());
         string file_size = getMemorySize(text_content.size());
         ctx.drawText(Vec2{ static_cast<int>(ctx.getSize().x - (file_size.size() + 2)), 0 }, file_size);
         ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
@@ -336,10 +374,8 @@ public:
         {
             if (i - scroll > text_content_height - 1)
                 continue;
-            // FIXME: line numbers clipping when not single-digit
             ctx.drawText(Vec2{ text_left, i + text_top - scroll }, lines[i].first);
-            if (show_next_line) // FIXME: line number is incorrect when first line is wrapped 
-                ctx.drawText(Vec2{ 0, i + text_top - scroll }, to_string(actual_line));
+            ctx.draw(Vec2{ 0, i + text_top - scroll }, (actual_line % 2) ? 0xB0 : 0xB2, 2);
             if (lines[i].second)
             {
                 ++actual_line;
@@ -390,7 +426,6 @@ public:
 
         // help/status bar
         ctx.drawText({ 1, text_box_bottom }, info_text);
-        // FIXME: make this run not every frame (on a timer? on updateLines?)
         string words_count = to_string(countWords()) + " words.";
         ctx.drawText({ 1, text_box_bottom }, info_text);
         ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
@@ -414,6 +449,7 @@ public:
             case 0: drawPopupHelp(ctx); break;
             case 1: drawPopupFigure(ctx); break;
             case 2: drawPopupCitation(ctx); break;
+            case 3: drawPopupUnsavedConfirm(ctx); break;
             }
             ctx.drawText(Vec2{ ctx.getSize().x - 18, ctx.getSize().y - 1 }, "[ ESC to close ]");
 
@@ -566,14 +602,17 @@ private:
             //checkUndoHistoryState(2);
             //text_content.insert(cursor_index, "%cite{}");
             //cursor_index += strlen("%cite{}"); // TODO: citation
+            //flagUnsaved();
             break;
         case 'B':
             checkUndoHistoryState(2);
             surroundSelection('*');
+            flagUnsaved();
             break;
         case 'I':
             checkUndoHistoryState(2);
             surroundSelection('_');
+            flagUnsaved();
             break;
         case 'F':
             is_popup_active = true;
@@ -584,18 +623,21 @@ private:
             //checkUndoHistoryState(2);
             //text_content.insert(cursor_index, "%fig{}");
             //cursor_index += strlen("%fig{}");
+            //flagUnsaved();
             break; // TODO: figure
         case 'M':
             checkUndoHistoryState(2);
             text_content.insert(cursor_index, "%math{}");
             cursor_index += strlen("%math{");
             clearSelection();
+            flagUnsaved();
             break;
         case 'X':
             checkUndoHistoryState(2);
             text_content.insert(cursor_index, "%code{}");
             cursor_index += strlen("%code{");
             clearSelection();
+            flagUnsaved();
             break;
         case '\\':
             if (selection_end_index != cursor_index)
@@ -608,6 +650,7 @@ private:
             text_content.insert(text_content.begin() + cursor_index, '\\');
             ++cursor_index;
             clearSelection();
+            flagUnsaved();
             break;
         default:
             info_text = "unrecognised hotkey.";
@@ -754,6 +797,37 @@ private:
         ctx.drawText(Vec2{ 2, 0 }, "[ CITATION SELECTOR ]");
     }
 
+    void drawPopupUnsavedConfirm(Context& ctx)
+    {
+        ctx.drawText(Vec2{ 2, 0 }, "[ UNSAVED CHANGES ]");
+
+        ctx.drawText(Vec2{ 3, 3 }, "you have unsaved changes in the current document.");
+        ctx.drawText(Vec2{ 3, 4 }, "do you want to save them before continuing?");
+
+        ctx.drawText(Vec2{ 2, ctx.getSize().y - 1 }, "[ DISCARD CHANGES ]", (popup_option_index == 0) ? 1 : 0);
+        ctx.drawText(Vec2{ 24, ctx.getSize().y - 1 }, "[ SAVE CHANGES ]", (popup_option_index == 1) ? 1 : 0);
+    }
+
+    void keyEventPopupUnsavedConfirm(KeyEvent& evt)
+    {
+        if (evt.key == 263)
+            popup_option_index = 0;
+        else if (evt.key == 262)
+            popup_option_index = 1;
+        else if (evt.key == 257)
+        {
+            if (popup_option_index == 0)
+                runFileOpenDialog();
+            else
+            {
+                triggerSave();
+                runFileOpenDialog();
+            }
+            is_popup_active = false;
+            info_text = "ready.";
+        }
+    }
+
     string getMemorySize(size_t bytes)
     {
         if (bytes >= 2048ull * 1024 * 1024)
@@ -842,6 +916,10 @@ private:
 
     size_t countWords()
     {
+        chrono::duration<float> since_last_count = chrono::steady_clock::now() - last_word_count;
+        if (since_last_count.count() < 2.0f)
+            return last_counted_words;
+
         size_t words = 0;
         size_t word_length = 0;
         size_t index = 0;
@@ -865,7 +943,69 @@ private:
         if (word_length > 0)
             ++words;
 
+        last_counted_words = words;
+        last_word_count = chrono::steady_clock::now();
         return words;
+    }
+
+    void flagUnsaved()
+    {
+        has_unsaved_changes = true;
+    }
+    
+    void runFileOpenDialog()
+    {
+        auto f = pfd::open_file("select file to open", "",
+            { "Markdown Files (.tmd .md)", "*.tmd *.md",
+              "Text Files (.txt .text)", "*.txt *.text",
+              "All Files", "*" },
+            pfd::opt::none);
+        const auto result = f.result();
+        if (!result.empty())
+        {
+            const string file = result[0];
+            if (filesystem::is_regular_file(file))
+            {
+                ifstream file_stream(file, ios::ate);
+                text_content.resize(file_stream.tellg());
+                file_stream.seekg(ios::beg);
+                file_stream.read(text_content.data(), text_content.size());
+                undo_history.clear();
+                redo_history.clear();
+                pushUndoHistory();
+                file_path = file;
+                has_unsaved_changes = false;
+                needs_save_as = false;
+            }
+            else
+                info_text = "file is not a regular text file.";
+        }
+    }
+
+    void triggerSave()
+    {
+        if (!needs_save_as)
+        {
+            ofstream file_stream(file_path);
+            file_stream.write(text_content.data(), text_content.size());
+            pushUndoHistory();
+            has_unsaved_changes = false;
+        }
+        else
+        {
+            auto f = pfd::save_file("select file to save", file_path,
+                { "Markdown Files (.tmd .md)", "*.tmd *.md",
+                  "Text Files (.txt .text)", "*.txt *.text",
+                  "All Files", "*" },
+                pfd::opt::none);
+            const string file = f.result();
+            ofstream file_stream(file);
+            file_stream.write(text_content.data(), text_content.size());
+            pushUndoHistory();
+            file_path = file;
+            has_unsaved_changes = false;
+            needs_save_as = false;
+        }
     }
 };
 
