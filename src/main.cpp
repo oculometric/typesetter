@@ -45,16 +45,21 @@ private:
     bool is_popup_active = true;
     int popup_index = -1;
 
-    // TODO: undo/redo history
-    // TODO: word separation flagging (for counting and walking)
-    // TODO: word/line count
-    // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line)
-    // TODO: load/save files
-    // TODO: figure popup, citation popup and list/bibliography
+    vector<string> undo_history;
+    vector<string> redo_history;
+    int changes_since_push = 10000000;
+    int last_change_type = 0; // 0 = regular character, 1 = delete
+    chrono::steady_clock::time_point last_push;
 
-    // TODO: more colours, custom themes
-    // TODO: concrete specification
-    // TODO: pdf generation
+    // TODO: word separation flagging (for counting and walking) [30]
+    // TODO: word/line count [10]
+    // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line) [45]
+    // TODO: load/save files [60]
+    // TODO: figure popup, citation popup and list/bibliography [120]
+
+    // TODO: more colours, custom themes [45]
+    // TODO: concrete specification [120]
+    // TODO: pdf generation [240]
 
 public:
     void textEvent(unsigned int chr)
@@ -72,7 +77,12 @@ public:
         if (chr != '\\')
         {
             if (selection_end_index != cursor_index)
+            {
+                checkUndoHistoryState(2);
                 eraseSelection();
+            }
+            else
+                checkUndoHistoryState(0);
             text_content.insert(text_content.begin() + cursor_index, (char)chr);
             ++cursor_index;
         }
@@ -111,6 +121,12 @@ public:
            
             switch (evt.key)
             {
+            case 'Z':
+                if (evt.modifiers == KeyEvent::CTRL)
+                    popUndoHistory();
+                else if (evt.modifiers == (KeyEvent::CTRL | KeyEvent::SHIFT))
+                    popRedoHistory();
+                break;
             case 'H':
                 if (evt.modifiers == KeyEvent::CTRL)
                 {
@@ -143,7 +159,10 @@ public:
                     clipboardxx::clipboard c;
                     c << clipboard;
                     if (selection_end_index != cursor_index)
+                    {
+                        checkUndoHistoryState(2);
                         eraseSelection();
+                    }
                     clearSelection();
                     info_text = "cut " + to_string(clipboard.size()) + " characters.";
                 }
@@ -151,11 +170,13 @@ public:
             case 'V':
                 if (evt.modifiers == KeyEvent::CTRL)
                 {
-                    if (selection_end_index != cursor_index)
-                        eraseSelection();
                     string clipboard;
                     clipboardxx::clipboard c;
                     c >> clipboard; // FIXME: replace \r with \n, unless \r\n
+                    if ((selection_end_index != cursor_index) || clipboard.size() > 0)
+                        checkUndoHistoryState(2);
+                    if (selection_end_index != cursor_index)
+                        eraseSelection();
                     clearSelection();
                     text_content.insert(cursor_index, clipboard);
                     cursor_index += clipboard.size();
@@ -169,9 +190,13 @@ public:
                 break;
             case 259: // backspace
                 if (selection_end_index != cursor_index)
+                {
+                    checkUndoHistoryState(2);
                     eraseSelection();
+                }
                 else if (cursor_index > 0)
                 {
+                    checkUndoHistoryState(1);
                     text_content.erase(text_content.begin() + cursor_index - 1);
                     --cursor_index;
                 }
@@ -179,9 +204,15 @@ public:
                 break;
             case 261: // delete
                 if (selection_end_index != cursor_index)
+                {
+                    checkUndoHistoryState(2);
                     eraseSelection();
+                }
                 else
+                {
+                    checkUndoHistoryState(1);
                     text_content.erase(text_content.begin() + cursor_index);
+                }
                 clearSelection();
                 break;
             case 263: // left arrow
@@ -252,6 +283,8 @@ public:
 
     void render(Context& ctx) override
     {
+        checkUndoHistoryState(-1);
+
         int text_box_left = 1;
         int text_box_right = ctx.getSize().x - 1;
         int text_box_top = 1;
@@ -512,13 +545,16 @@ private:
             listening_for_hotkey = 0;
             info_text = "showing citation selector.";
 
+            //checkUndoHistoryState(2);
             //text_content.insert(cursor_index, "%cite{}");
             //cursor_index += strlen("%cite{}"); // TODO: citation
             break;
         case 'B':
+            checkUndoHistoryState(2);
             surroundSelection('*');
             break;
         case 'I':
+            checkUndoHistoryState(2);
             surroundSelection('_');
             break;
         case 'F':
@@ -527,22 +563,30 @@ private:
             listening_for_hotkey = 0;
             info_text = "showing figure selector.";
 
+            //checkUndoHistoryState(2);
             //text_content.insert(cursor_index, "%fig{}");
             //cursor_index += strlen("%fig{}");
             break; // TODO: figure
         case 'M':
+            checkUndoHistoryState(2);
             text_content.insert(cursor_index, "%math{}");
             cursor_index += strlen("%math{");
             clearSelection();
             break;
         case 'X':
+            checkUndoHistoryState(2);
             text_content.insert(cursor_index, "%code{}");
             cursor_index += strlen("%code{");
             clearSelection();
             break;
         case '\\':
             if (selection_end_index != cursor_index)
+            {
+                checkUndoHistoryState(2);
                 eraseSelection();
+            }
+            else
+                checkUndoHistoryState(0);
             text_content.insert(text_content.begin() + cursor_index, '\\');
             ++cursor_index;
             clearSelection();
@@ -576,6 +620,64 @@ private:
     {
         selection_end_index = cursor_index;
         selection_end_position = cursor_position;
+    }
+
+    void checkUndoHistoryState(int change_type)
+    {
+        if (change_type != -1)
+            redo_history.clear();
+
+        if (change_type >= 0)
+            ++changes_since_push;
+
+        // 2 = cut/paste/delete block
+        if (change_type == 2)
+            pushUndoHistory();
+        else if ((change_type != -1) && (change_type != last_change_type) && (changes_since_push > 10))
+            pushUndoHistory();
+        else if (changes_since_push > 30)
+            pushUndoHistory();
+        else if (changes_since_push == 0)
+        {
+            last_push = chrono::steady_clock::now();
+        }
+        else
+        {
+            chrono::duration<float> time = chrono::steady_clock::now() - last_push;
+            if (time.count() > 60.0f)
+                pushUndoHistory();
+        }
+    }
+
+    void pushUndoHistory()
+    {
+        changes_since_push = 0;
+        last_push = chrono::steady_clock::now();
+        undo_history.push_back(text_content);
+    }
+
+    void popUndoHistory()
+    {
+        if (undo_history.empty())
+            return;
+        changes_since_push = 0;
+        last_push = chrono::steady_clock::now();
+        redo_history.push_back(text_content);
+        text_content = *(undo_history.end() - 1);
+        undo_history.pop_back();
+        clearSelection();
+    }
+
+    void popRedoHistory()
+    {
+        if (redo_history.empty())
+            return;
+        changes_since_push = 0;
+        last_push = chrono::steady_clock::now();
+        undo_history.push_back(text_content);
+        text_content = *(redo_history.end() - 1);
+        redo_history.pop_back();
+        clearSelection();
     }
 
     void drawPopupHello(Context& ctx)
