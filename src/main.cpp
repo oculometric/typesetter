@@ -32,7 +32,7 @@ bool isRenderable(int c)
 class EditorDrawable : public Drawable
 {
 private:
-    string text_content = "%title{document}\n\nLorem ipsum dolor sit amet.\n\n%bib{}";
+    string text_content = "%title{document}\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n%bib{}";
     vector<pair<string, bool>> lines;
     size_t cursor_index = 0;
     Vec2 cursor_position = { 0, 0 };
@@ -42,18 +42,19 @@ private:
 
     string info_text = "ready.";
     int listening_for_hotkey = 0;
-    bool is_popup_active = false;
-    int popup_index = 0;
+    bool is_popup_active = true;
+    int popup_index = -1;
 
-    // TODO: file size display top right
-    // TODO: load/save files
-    // TODO: load popup on launch
+    // TODO: undo/redo history
+    // TODO: word separation flagging (for counting and walking)
+    // TODO: word/line count
     // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line)
+    // TODO: load/save files
     // TODO: figure popup, citation popup and list/bibliography
 
     // TODO: more colours, custom themes
-    // TODO: pdf generation
     // TODO: concrete specification
+    // TODO: pdf generation
 
 public:
     void textEvent(unsigned int chr)
@@ -88,6 +89,12 @@ public:
                 if (evt.key == 256)
                 {
                     is_popup_active = false;
+                    info_text = "ready.";
+                }
+                if (popup_index == -1)
+                {
+                    is_popup_active = false;
+                    listening_for_hotkey = 1;
                     info_text = "ready.";
                 }
                 // TODO: pass input to popup
@@ -148,7 +155,7 @@ public:
                         eraseSelection();
                     string clipboard;
                     clipboardxx::clipboard c;
-                    c >> clipboard;
+                    c >> clipboard; // FIXME: replace \r with \n, unless \r\n
                     clearSelection();
                     text_content.insert(cursor_index, clipboard);
                     cursor_index += clipboard.size();
@@ -259,8 +266,20 @@ public:
         Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
         int scrollbar_height = ctx.getSize().y - 3;
 
+        if (is_popup_active)
+        {
+            ctx.pushPalette(Palette{
+                BG_BLACK | FG_DARK_GREY,
+                FG_BLACK | BG_DARK_GREY,
+                FG_BLACK | BG_DARK_GREY
+                });
+        }
+
         // header
-        ctx.drawText({ 1, 0 }, "[ TYPESETTER ] - editing <filename>");
+        ctx.drawText({ 1, 0 }, "[ TYPECETTER ] - editing <filename>");
+        string file_size = getMemorySize(text_content.size());
+        ctx.drawText(Vec2{ static_cast<int>(ctx.getSize().x - (file_size.size() + 2)), 0 }, file_size);
+        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
         ctx.drawBox({ text_box_left, text_box_top }, text_box_size);
         
         // text content
@@ -284,24 +303,27 @@ public:
         }
 
         // cursor and selection
-        if (selection_end_index != cursor_index)
+        if (!is_popup_active)
         {
-            Vec2 selection_pos = selection_end_position;
-            Vec2 end_pos = cursor_position;
-            if (cursor_index < selection_end_index)
+            if (selection_end_index != cursor_index)
             {
-                selection_pos = cursor_position;
-                end_pos = selection_end_position;
+                Vec2 selection_pos = selection_end_position;
+                Vec2 end_pos = cursor_position;
+                if (cursor_index < selection_end_index)
+                {
+                    selection_pos = cursor_position;
+                    end_pos = selection_end_position;
+                }
+                while (selection_pos.y != end_pos.y)
+                {
+                    ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ text_content_width, 1 }, 2);
+                    ++selection_pos.y;
+                    selection_pos.x = 0;
+                }
+                ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ end_pos.x - selection_pos.x + 1, 1 }, 2);
             }
-            while (selection_pos.y != end_pos.y)
-            {
-                ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ text_content_width, 1 }, 2);
-                ++selection_pos.y;
-                selection_pos.x = 0;
-            }
-            ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ end_pos.x - selection_pos.x + 1, 1 }, 2);
+            ctx.drawColour(cursor_position + Vec2{ text_left, text_top - scroll }, 1);
         }
-        ctx.drawColour(cursor_position + Vec2{ text_left, text_top - scroll }, 1);
 
         // scrollbar
         ctx.draw(scrollbar_start, 0xC2);
@@ -323,6 +345,11 @@ public:
         ctx.drawText({ 1, text_box_bottom }, info_text);
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
     
+        if (is_popup_active)
+        {
+            ctx.popPalette();
+        }
+
         // popup
         if (is_popup_active)
         {
@@ -332,6 +359,7 @@ public:
             
             switch (popup_index)
             {
+            case -1: drawPopupHello(ctx); break;
             case 0: drawPopupHelp(ctx); break;
             case 1: drawPopupFigure(ctx); break;
             case 2: drawPopupCitation(ctx); break;
@@ -488,7 +516,11 @@ private:
             //cursor_index += strlen("%cite{}"); // TODO: citation
             break;
         case 'B':
-            break; // TODO: bold, possibly selection
+            surroundSelection('*');
+            break;
+        case 'I':
+            surroundSelection('_');
+            break;
         case 'F':
             is_popup_active = true;
             popup_index = 1;
@@ -498,16 +530,16 @@ private:
             //text_content.insert(cursor_index, "%fig{}");
             //cursor_index += strlen("%fig{}");
             break; // TODO: figure
-        case 'I':
-            break; // TODO: italic
         case 'M':
             text_content.insert(cursor_index, "%math{}");
-            cursor_index += strlen("%math{}");
-            break; // TODO: math
+            cursor_index += strlen("%math{");
+            clearSelection();
+            break;
         case 'X':
             text_content.insert(cursor_index, "%code{}");
-            cursor_index += strlen("%code{}");
-            break; // TODO: code block
+            cursor_index += strlen("%code{");
+            clearSelection();
+            break;
         case '\\':
             if (selection_end_index != cursor_index)
                 eraseSelection();
@@ -523,10 +555,51 @@ private:
         updateLines();
     }
 
+    void surroundSelection(char c)
+    {
+        if (selection_end_index != cursor_index)
+        {
+            auto [start, length] = getSelectionStartLength();
+            text_content.insert(text_content.begin() + start, c);
+            text_content.insert(text_content.begin() + start + length + 1, c);
+            cursor_index += 2;
+        }
+        else
+        {
+            text_content.insert(cursor_index, 2, c);
+            ++cursor_index;
+        }
+        clearSelection();
+    }
+
     void clearSelection()
     {
         selection_end_index = cursor_index;
         selection_end_position = cursor_position;
+    }
+
+    void drawPopupHello(Context& ctx)
+    {
+        ctx.drawText(Vec2{ 2, 0 }, "[ SPLASH ]");
+
+        size_t offset = 0;
+        for (int i = 0; i < 10; ++i)
+        {
+            ctx.drawText(Vec2{ 4, 4 + i }, saturn_ascii, 0, offset, 15);
+            offset += 15;
+        }
+
+        ctx.drawText(Vec2{ 23,  4 }, ": typecetter ----------------------- :");
+        ctx.drawText(Vec2{ 23,  5 }, ": a text-only scientific typesetting :");
+        ctx.drawText(Vec2{ 23,  6 }, ": editor by cassette costen, powered :");
+        ctx.drawText(Vec2{ 23,  7 }, ":                           by STRN. :");
+        ctx.drawText(Vec2{ 23,  8 }, ":                                    :");
+        ctx.drawText(Vec2{ 23,  9 }, ":                                    :");
+        ctx.drawText(Vec2{ 23, 10 }, ":                                    :");
+        ctx.drawText(Vec2{ 23, 11 }, ":                                    :");
+        ctx.drawText(Vec2{ 23, 12 }, ":                                    :");
+        ctx.drawText(Vec2{ 23, 13 }, ":                                    :");
+        ctx.drawText(Vec2{ 23, 14 }, ":      press any key to begin.       :");
     }
 
     void drawPopupHelp(Context& ctx)
@@ -559,6 +632,18 @@ private:
     void drawPopupCitation(Context& ctx)
     {
         ctx.drawText(Vec2{ 2, 0 }, "[ CITATION SELECTOR ]");
+    }
+
+    string getMemorySize(size_t bytes)
+    {
+        if (bytes >= 2048ull * 1024 * 1024)
+            return format("{0:.1f} GiB", (float)bytes / (1024ull * 1024 * 1024));
+        else if (bytes >= 2048ull * 1024)
+            return format("{0:.1f} MiB", (float)bytes / (1024ull * 1024));
+        else if (bytes >= 2048ull)
+            return format("{0:.1f} KiB", (float)bytes / 1024);
+        else
+            return format("{0} B", bytes);
     }
 };
 
