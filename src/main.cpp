@@ -64,12 +64,12 @@ private:
 
     // TODO: figure popup, citation popup and list/bibliography [120]
 
-    // TODO: barrel distortion
     // TODO: find tool [60]
     // TODO: ability to add custom font
     // TODO: more colours, custom themes [45]
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
+    // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
 
 public:
     EditorDrawable()

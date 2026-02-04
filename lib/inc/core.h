@@ -247,12 +247,15 @@ private:
     int height = 0;
     size_t scale_factor = 2;
     size_t pitch = 1;
+    float distortion = 0.03f;
+    Colour clear = BG_BLACK;
 
     unsigned int vertex_buffer;
     unsigned int index_buffer;
     unsigned int vertex_array_object;
     unsigned int shader_program;
     int transform_var;
+    int distortion_var;
     unsigned int font_texture;
     int mesh_index_count;
 
@@ -267,6 +270,8 @@ public:
     
     void setWindowSize(int w, int h) const;
     void setScaleFactor(size_t value);
+    void setClearColour(Colour c) { clear = c; }
+    void setDistortion(float d) { distortion = d; }
     
     bool update() override;
     KeyEvent getKeyEvent() override;
