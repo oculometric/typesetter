@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <strn.h>
+#include <clipboardXX/clipboardxx.hpp>
 
 const char* saturn_ascii = 
 " .             "
@@ -44,12 +45,11 @@ private:
     bool is_popup_active = false;
     int popup_index = 0;
 
-    // TODO: copy/cut/paste
-    
-    // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line)
-    // TODO: figure popup, citation popup and list/bibliography
+    // TODO: file size display top right
     // TODO: load/save files
     // TODO: load popup on launch
+    // TODO: cursor navigation (ctrl + right/left -> walk word, alt + right/left -> start/end line)
+    // TODO: figure popup, citation popup and list/bibliography
 
     // TODO: more colours, custom themes
     // TODO: pdf generation
@@ -111,6 +111,49 @@ public:
                     popup_index = 0;
                     listening_for_hotkey = 0;
                     info_text = "showing help.";
+                }
+                break;
+            case 'A':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    selection_end_index = 0;
+                    cursor_index = text_content.size();
+                }
+                break;
+            case 'C':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    string clipboard = getSelection();
+                    clipboardxx::clipboard c;
+                    c << clipboard;
+                    info_text = "copied " + to_string(clipboard.size()) + " characters.";
+                }
+                break;
+            case 'X':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    string clipboard = getSelection();
+                    clipboardxx::clipboard c;
+                    c << clipboard;
+                    if (selection_end_index != cursor_index)
+                        eraseSelection();
+                    clearSelection();
+                    info_text = "cut " + to_string(clipboard.size()) + " characters.";
+                }
+                break;
+            case 'V':
+                if (evt.modifiers == KeyEvent::CTRL)
+                {
+                    if (selection_end_index != cursor_index)
+                        eraseSelection();
+                    string clipboard;
+                    clipboardxx::clipboard c;
+                    c >> clipboard;
+                    clearSelection();
+                    text_content.insert(cursor_index, clipboard);
+                    cursor_index += clipboard.size();
+                    clearSelection();
+                    info_text = "pasted " + to_string(clipboard.size()) + " characters.";
                 }
                 break;
             case '\\': // hotkey trigger
@@ -202,21 +245,35 @@ public:
 
     void render(Context& ctx) override
     {
+        int text_box_left = 1;
+        int text_box_right = ctx.getSize().x - 1;
+        int text_box_top = 1;
+        int text_box_bottom = ctx.getSize().y - 2;
+        Vec2 text_box_size = { text_box_right - text_box_left, text_box_bottom - text_box_top };
+
+        int text_content_height = text_box_size.y - 2;
+        int text_left = text_box_left + 1;
+        int text_top = text_box_top + 1;
+        int text_content_width = text_box_size.x - 2;
+
+        Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
+        int scrollbar_height = ctx.getSize().y - 3;
+
         // header
         ctx.drawText({ 1, 0 }, "[ TYPESETTER ] - editing <filename>");
-        ctx.drawBox({ 1, 1 }, ctx.getSize() - Vec2{ 2, 3 });
+        ctx.drawBox({ text_box_left, text_box_top }, text_box_size);
         
         // text content
         int actual_line = scroll + 1;
         bool show_next_line = true;
         for (int i = scroll; i < lines.size(); ++i)
         {
-            if (i - scroll > ctx.getSize().y - 6)
+            if (i - scroll > text_content_height - 1)
                 continue;
-
-            ctx.drawText(Vec2{ 2, i + 2 - scroll }, lines[i].first);
-            if (show_next_line)
-                ctx.drawText(Vec2{ 0, i + 2 - scroll }, to_string(actual_line));
+            // FIXME: line numbers clipping when not single-digit
+            ctx.drawText(Vec2{ text_left, i + text_top - scroll }, lines[i].first);
+            if (show_next_line) // FIXME: line number is incorrect when first line is wrapped 
+                ctx.drawText(Vec2{ 0, i + text_top - scroll }, to_string(actual_line));
             if (lines[i].second)
             {
                 ++actual_line;
@@ -238,31 +295,33 @@ public:
             }
             while (selection_pos.y != end_pos.y)
             {
-                ctx.fillColour(selection_pos + Vec2{ 2, 2 - scroll }, Vec2{ ctx.getSize().x - 4, 1 }, 2);
+                ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ text_content_width, 1 }, 2);
                 ++selection_pos.y;
                 selection_pos.x = 0;
             }
-            ctx.fillColour(selection_pos + Vec2{ 2, 2 - scroll }, Vec2{ end_pos.x - selection_pos.x + 1, 1 }, 2);
+            ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ end_pos.x - selection_pos.x + 1, 1 }, 2);
         }
-        ctx.drawColour(cursor_position + Vec2{ 2, 2 - scroll }, 1);
+        ctx.drawColour(cursor_position + Vec2{ text_left, text_top - scroll }, 1);
 
         // scrollbar
-        int scrollbar_height = ctx.getSize().y - 3;
-        // FIXME: improve choice of chars for scrollbar
-        ctx.draw(Vec2{ ctx.getSize().x - 1, 1 }, 0xD2);
-        ctx.fill(Vec2{ ctx.getSize().x - 1, 2 }, Vec2{ 1, scrollbar_height - 2 }, 0xBA);
-        ctx.draw(Vec2{ ctx.getSize().x - 1, scrollbar_height }, 0xD0);
+        ctx.draw(scrollbar_start, 0xC2);
+        ctx.fill(scrollbar_start + Vec2{ 0, 1 }, Vec2{ 1, scrollbar_height - 2 }, 0xB3);
+        ctx.draw(scrollbar_start + Vec2{ 0, scrollbar_height - 1 }, 0xC1);
         float start_fraction = static_cast<float>(scroll) / static_cast<float>(lines.size());
         float end_fraction = min(static_cast<float>(scroll + ctx.getSize().y - 5) / static_cast<float>(lines.size()), 1.0f);
         int start_y = static_cast<int>(ceil(start_fraction * scrollbar_height));
         int end_y = static_cast<int>(floor((end_fraction - start_fraction) * scrollbar_height)) + start_y;
         if (end_y >= scrollbar_height && end_fraction < 1.0f)
             end_y = scrollbar_height - 1;
-        ctx.fill(Vec2{ ctx.getSize().x - 1, start_y + 1 }, Vec2{ 1, min(end_y - start_y, scrollbar_height) }, 0xDB);
+        ctx.fill(scrollbar_start + Vec2{ 0, start_y }, Vec2{ 1, min(end_y - start_y, scrollbar_height) }, 0xDB);
+        if (start_y == 0)
+            ctx.draw(scrollbar_start + Vec2{ 0, start_y }, 0xDC);
+        if (end_y == scrollbar_height)
+            ctx.draw(scrollbar_start + Vec2{ 0, end_y - 1 }, 0xDF);
 
         // help/status bar
-        ctx.drawText({ 1, ctx.getSize().y - 2 }, info_text);
-        ctx.drawText({ 1, ctx.getSize().y - 1 }, "help (Ctrl + H)  figure (F)  citation (C)  bold (B)  italic (I)  math (M)  code (X)");
+        ctx.drawText({ 1, text_box_bottom }, info_text);
+        ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
     
         // popup
         if (is_popup_active)
@@ -314,23 +373,40 @@ public:
     }
 
 private:
-    void eraseSelection()
+    pair<size_t, size_t> getSelectionStartLength()
     {
-        if (selection_end_index == cursor_index)
-            return;
-
         // inclusive!
         size_t min_index = selection_end_index;
         size_t max_index = cursor_index - 1;
         if (selection_end_index > cursor_index)
         {
-            min_index = cursor_index + 1;
+            min_index = cursor_index;
             max_index = selection_end_index;
         }
-        else
-            cursor_index = selection_end_index;
+        
+        return { min_index, (max_index - min_index) + 1 };
+    }
 
-        text_content.erase(min_index, (max_index - min_index) + 1);
+    void eraseSelection()
+    {
+        if (selection_end_index == cursor_index)
+            return;
+
+        auto [min_index, length] = getSelectionStartLength();
+
+        cursor_index = min_index;
+
+        text_content.erase(min_index, length);
+    }
+
+    string getSelection()
+    {
+        if (selection_end_index == cursor_index)
+            return "";
+
+        auto [min_index, length] = getSelectionStartLength();
+
+        return text_content.substr(min_index, length);
     }
 
     Vec2 calculatePosition(size_t index)
