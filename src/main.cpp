@@ -51,7 +51,6 @@ private:
     int last_change_type = 0; // 0 = regular character, 1 = delete
     chrono::steady_clock::time_point last_push;
 
-    // TODO: word/line count [10]
     // TODO: load/save files [60]
     // TODO: figure popup, citation popup and list/bibliography [120]
 
@@ -192,6 +191,8 @@ public:
                 info_text = "waiting for hotkey...";
                 break;
             case 259: // backspace
+                if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
+                    selection_end_index = findPrevWord(cursor_index);
                 if (selection_end_index != cursor_index)
                 {
                     checkUndoHistoryState(2);
@@ -206,6 +207,8 @@ public:
                 clearSelection();
                 break;
             case 261: // delete
+                if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
+                    cursor_index = findNextWord(cursor_index);
                 if (selection_end_index != cursor_index)
                 {
                     checkUndoHistoryState(2);
@@ -387,6 +390,10 @@ public:
 
         // help/status bar
         ctx.drawText({ 1, text_box_bottom }, info_text);
+        // FIXME: make this run not every frame (on a timer? on updateLines?)
+        string words_count = to_string(countWords()) + " words.";
+        ctx.drawText({ 1, text_box_bottom }, info_text);
+        ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
     
         if (is_popup_active)
@@ -831,6 +838,34 @@ private:
         if (current == 0)
             return current;
         return current + 1;
+    }
+
+    size_t countWords()
+    {
+        size_t words = 0;
+        size_t word_length = 0;
+        size_t index = 0;
+        while (index < text_content.size())
+        {
+            int char_type = getCharacterType(index);
+            if (char_type != 0)
+            {
+                if (word_length > 0)
+                {
+                    ++words;
+                    word_length = 0;
+                }
+            }
+            else
+            {
+                ++word_length;
+            }
+            ++index;
+        }
+        if (word_length > 0)
+            ++words;
+
+        return words;
     }
 };
 
