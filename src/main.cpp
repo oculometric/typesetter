@@ -669,7 +669,7 @@ private:
         {
             auto [start, length] = getSelectionStartLength();
             text_content.insert(text_content.begin() + start, c);
-            text_content.insert(text_content.begin() + start + length + 1, c);
+            text_content.insert(text_content.begin() + min(start + length + 1, text_content.size()), c);
             cursor_index += 2;
         }
         else
