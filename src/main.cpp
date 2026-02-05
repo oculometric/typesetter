@@ -35,7 +35,7 @@ bool isRenderable(int c)
 class EditorDrawable : public Drawable
 {
 private:
-    string text_content = "%title{document}\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n%bib{}";
+    string text_content = "%title{document}\n%config{columns=2;citations=harvard}\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\n%bib{}";
     vector<pair<string, bool>> lines;
     size_t cursor_index = 0;
     Vec2 cursor_position = { 0, 0 };
@@ -66,10 +66,10 @@ private:
 
     // TODO: find tool [60]
     // TODO: ability to add custom font
-    // TODO: more colours, custom themes [45]
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
     // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
+    // TODO: syntax highlighting
 
 public:
     EditorDrawable()
@@ -354,14 +354,10 @@ public:
         Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
         int scrollbar_height = ctx.getSize().y - 3;
 
+        pushTextPalette(ctx);
+
         if (is_popup_active)
-        {
-            ctx.pushPalette(Palette{
-                BG_BLACK | FG_DARK_GREY,
-                FG_BLACK | BG_DARK_GREY,
-                FG_BLACK | BG_DARK_GREY
-                });
-        }
+            pushSubtextPalette(ctx);
 
         // header
         ctx.drawText({ 1, 0 }, "[ TYPECETTER ] - editing " + filesystem::path(file_path).filename().string());
@@ -402,7 +398,7 @@ public:
                 }
                 while (selection_pos.y != end_pos.y)
                 {
-                    ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ text_content_width, 1 }, 2);
+                    ctx.fillColour(selection_pos + Vec2{ text_left, text_top - scroll }, Vec2{ text_content_width - selection_pos.x, 1 }, 2);
                     ++selection_pos.y;
                     selection_pos.x = 0;
                 }
@@ -412,6 +408,7 @@ public:
         }
 
         // scrollbar
+        pushSubtextPalette(ctx);
         ctx.draw(scrollbar_start, 0xC2);
         ctx.fill(scrollbar_start + Vec2{ 0, 1 }, Vec2{ 1, scrollbar_height - 2 }, 0xB3);
         ctx.draw(scrollbar_start + Vec2{ 0, scrollbar_height - 1 }, 0xC1);
@@ -426,13 +423,16 @@ public:
             ctx.draw(scrollbar_start + Vec2{ 0, start_y }, 0xDC);
         if (end_y == scrollbar_height)
             ctx.draw(scrollbar_start + Vec2{ 0, end_y - 1 }, 0xDF);
+        ctx.popPalette();
 
         // help/status bar
+        pushSubtextPalette(ctx);
         ctx.drawText({ 1, text_box_bottom }, info_text);
         string words_count = to_string(countWords()) + " words.";
         ctx.drawText({ 1, text_box_bottom }, info_text);
         ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
+        ctx.popPalette();
     
         if (is_popup_active)
         {
@@ -445,7 +445,7 @@ public:
             ctx.pushBounds(Vec2{ 6, 3 }, ctx.getSize() - Vec2{ 6, 3 });
             ctx.drawBox(Vec2{ 0, 0 }, ctx.getSize());
             ctx.fill(Vec2{ 1, 1 }, ctx.getSize() - Vec2{ 2, 2 }, ' ');
-            
+
             switch (popup_index)
             {
             case -1: drawPopupHello(ctx); break;
@@ -454,10 +454,14 @@ public:
             case 2: drawPopupCitation(ctx); break;
             case 3: drawPopupUnsavedConfirm(ctx); break;
             }
+            pushButtonPalette(ctx);
             ctx.drawText(Vec2{ ctx.getSize().x - 18, ctx.getSize().y - 1 }, "[ ESC to close ]");
+            ctx.popPalette();
 
             ctx.popBounds();
         }
+
+        ctx.popPalette();
     }
 
     void updateLines()
@@ -744,9 +748,47 @@ private:
         clearSelection();
     }
 
+    void pushTitlePalette(Context& ctx)
+    {
+        ctx.pushPalette(Palette{
+                BG_BLACK | FG_DARK_RED,
+                FG_BLACK | BG_DARK_RED,
+                FG_BLACK | BG_DARK_GREY
+            });
+    }
+
+    void pushTextPalette(Context& ctx)
+    {
+        ctx.pushPalette(Palette{
+                BG_BLACK | FG_DARK_YELLOW,
+                FG_BLACK | BG_DARK_YELLOW,
+                FG_BLACK | BG_DARK_GREY
+            });
+    }
+
+    void pushSubtextPalette(Context& ctx)
+    {
+        ctx.pushPalette(Palette{
+                BG_BLACK | FG_DARK_GREY,
+                FG_BLACK | BG_DARK_GREY,
+                FG_BLACK | BG_DARK_GREY
+            });
+    }
+
+    void pushButtonPalette(Context& ctx)
+    {
+        ctx.pushPalette(Palette{
+                BG_BLACK | FG_DARK_MAGENTA,
+                FG_BLACK | BG_DARK_MAGENTA,
+                FG_BLACK | BG_DARK_GREY
+            });
+    }
+
     void drawPopupHello(Context& ctx)
     {
+        pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ SPLASH ]");
+        ctx.popPalette();
 
         size_t offset = 0;
         for (int i = 0; i < 10; ++i)
@@ -770,7 +812,10 @@ private:
 
     void drawPopupHelp(Context& ctx)
     {
+        pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ HELP ]");
+        ctx.popPalette();
+
         ctx.drawText(Vec2{ 3, 2 },   "Ctrl + S         : save document");
         ctx.drawText(Vec2{ 3, 3 },   "Ctrl + O         : open document");
         ctx.drawText(Vec2{ 3, 4 },   "Ctrl + C         : copy");
@@ -792,23 +837,31 @@ private:
 
     void drawPopupFigure(Context& ctx)
     {
+        pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ FIGURE SELECTOR ]");
+        ctx.popPalette();
     }
 
     void drawPopupCitation(Context& ctx)
     {
+        pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ CITATION SELECTOR ]");
+        ctx.popPalette();
     }
 
     void drawPopupUnsavedConfirm(Context& ctx)
     {
+        pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ UNSAVED CHANGES ]");
+        ctx.popPalette();
 
         ctx.drawText(Vec2{ 3, 3 }, "you have unsaved changes in the current document.");
         ctx.drawText(Vec2{ 3, 4 }, "do you want to save them before continuing?");
 
+        pushButtonPalette(ctx);
         ctx.drawText(Vec2{ 2, ctx.getSize().y - 1 }, "[ DISCARD CHANGES ]", (popup_option_index == 0) ? 1 : 0);
         ctx.drawText(Vec2{ 24, ctx.getSize().y - 1 }, "[ SAVE CHANGES ]", (popup_option_index == 1) ? 1 : 0);
+        ctx.popPalette();
     }
 
     void keyEventPopupUnsavedConfirm(KeyEvent& evt)
