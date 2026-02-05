@@ -65,11 +65,11 @@ private:
     // TODO: figure popup, citation popup and list/bibliography [120]
 
     // TODO: find tool [60]
-    // TODO: ability to add custom font
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
     // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
     // TODO: syntax highlighting
+    // TODO: ability to add custom font
 
 public:
     EditorDrawable()
@@ -1065,8 +1065,10 @@ private:
     }
 };
 
+#include <Windows.h>
 int main()
 {
+    FreeConsole();
     NativeRasteriser comp;
     comp.setPalette(Palette{
         DEFAULT_COLOUR,
