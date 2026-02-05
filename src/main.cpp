@@ -32,6 +32,48 @@ bool isRenderable(int c)
     return false;
 }
 
+struct Figure
+{
+    size_t start_offset;
+    string identifier;
+    string target_path;
+};
+
+struct Document
+{
+    string content;
+    
+    vector<Figure> figures;
+
+    // TODO: document parsing
+    void indexFigures()
+    {
+        size_t index = 0;
+        while (index < content.size())
+        {
+            if (content[index] == '%')
+            {
+                static const char* fig_search = "%fig{";
+                if (content.compare(index, strlen(fig_search), fig_search) == 0)
+                {
+                    size_t start_index = index + strlen(fig_search);
+                    index = content.find('}', start_index);
+                    size_t image_tag = contextAwareFind("image=", content, start_index, index);
+                    size_t id_tag = contextAwareFind("id=", content, start_index, index);
+                    // TODO: capture characters until the close bracket
+                    // TODO: work through until we find a figure which has an image tag
+                    // add that figure to the array
+                    
+                    continue;
+                }
+            }
+            ++index;
+        }
+    }
+    
+    void parseBibliography();
+};
+
 class EditorDrawable : public Drawable
 {
 private:
@@ -62,20 +104,25 @@ private:
     bool has_unsaved_changes = true;
     bool needs_save_as = true;
 
-    // TODO: figure popup, citation popup and list/bibliography [120]
+    bool show_line_checker = true;
+    bool show_hints = true;
+    float distortion = 0.03f;
+    
+    Document doc;
 
+    // TODO: figure popup, citation popup and list/bibliography [120]
+    // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
     // TODO: find tool [60]
+
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
-    // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
     // TODO: syntax highlighting
+    // TODO: section reference tag
     // TODO: ability to add custom font
 
 public:
     EditorDrawable()
-    {
-        pushUndoHistory();
-    }
+    { pushUndoHistory(); }
 
     // FIXME: reorganise code
 
@@ -127,6 +174,8 @@ public:
                 }
                 if (popup_index == 3)
                     keyEventPopupUnsavedConfirm(evt);
+                else if (popup_index == 1)
+                    keyEventPopupFigure(evt);
                 return;
             }
 
@@ -341,9 +390,13 @@ public:
         checkUndoHistoryState(-1);
 
         int text_box_left = 1;
+        if (!show_line_checker)
+            --text_box_left;
         int text_box_right = ctx.getSize().x - 1;
         int text_box_top = 1;
         int text_box_bottom = ctx.getSize().y - 2;
+        if (!show_hints)
+            ++text_box_bottom;
         Vec2 text_box_size = { text_box_right - text_box_left, text_box_bottom - text_box_top };
 
         int text_content_height = text_box_size.y - 2;
@@ -352,7 +405,7 @@ public:
         int text_content_width = text_box_size.x - 2;
 
         Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
-        int scrollbar_height = ctx.getSize().y - 3;
+        int scrollbar_height = text_box_bottom - 1;
 
         pushTextPalette(ctx);
 
@@ -374,7 +427,8 @@ public:
             if (i - scroll > text_content_height - 1)
                 continue;
             ctx.drawText(Vec2{ text_left, i + text_top - scroll }, lines[i].first);
-            ctx.draw(Vec2{ 0, i + text_top - scroll }, (actual_line % 2) ? 0xB0 : 0xB2, 2);
+            if (show_line_checker)
+                ctx.draw(Vec2{ 0, i + text_top - scroll }, (actual_line % 2) ? 0xB0 : 0xB2, 2);
             if (lines[i].second)
             {
                 ++actual_line;
@@ -431,7 +485,8 @@ public:
         string words_count = to_string(countWords()) + " words.";
         ctx.drawText({ 1, text_box_bottom }, info_text);
         ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
-        ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
+        if (show_hints)
+            ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
         ctx.popPalette();
     
         if (is_popup_active)
@@ -466,6 +521,8 @@ public:
 
     void updateLines()
     {
+        doc.content = text_content;
+        doc.indexFigures();
         // FIXME: this will need to be way faster (skip recalculating lines where possible)
 
         // wrap text and calculate cursor jump info
@@ -622,16 +679,17 @@ private:
             flagUnsaved();
             break;
         case 'F':
+            if (needs_save_as)
+            {
+                info_text = "document must be saved before figures can be inserted.";
+                break;
+            }
+            
             is_popup_active = true;
             popup_index = 1;
             listening_for_hotkey = 0;
             info_text = "showing figure selector.";
-
-            //checkUndoHistoryState(2);
-            //text_content.insert(cursor_index, "%fig{}");
-            //cursor_index += strlen("%fig{}");
-            //flagUnsaved();
-            break; // TODO: figure
+            break;
         case 'M':
             checkUndoHistoryState(2);
             text_content.insert(cursor_index, "%math{}");
@@ -840,6 +898,127 @@ private:
         pushTitlePalette(ctx);
         ctx.drawText(Vec2{ 2, 0 }, "[ FIGURE SELECTOR ]");
         ctx.popPalette();
+
+        pushButtonPalette(ctx);
+        ctx.drawText(Vec2{ 3, 3 }, "[    INSERT NEW     ]", (popup_option_index == 0) ? 1 : 0);
+        ctx.drawText(Vec2{ 3, 4 }, "[  REFERENCE NEXT   ]", (popup_option_index == 1) ? 1 : 0);
+        ctx.drawText(Vec2{ 3, 5 }, "[  REFERENCE LAST   ]", (popup_option_index == 2) ? 1 : 0);
+        ctx.drawText(Vec2{ 3, 6 }, "[ REFERENCE BY NAME ]", (popup_option_index == 3) ? 1 : 0);
+        ctx.popPalette();
+
+        string info_text;
+        switch (popup_option_index)
+        {
+        case 0:
+            info_text = "select a new image file to insert.";
+            break;
+        case 1:
+            info_text = "reference the next figure after the cursor";
+            break;
+        case 2:
+            info_text = "reference the last figure before the cursor.";
+            break;
+        case 3:
+            info_text = "select an existing figure to reference.";
+            break;
+        }
+        ctx.drawTextWrapped(Vec2{ 26, 3 }, info_text, 0, ctx.getSize().x - 29);
+    }
+
+    void keyEventPopupFigure(KeyEvent& evt)
+    {
+        if (evt.key == 265)
+            popup_option_index = max(0, popup_option_index - 1);
+        else if (evt.key == 264)
+            popup_option_index = min(3, popup_option_index + 1);
+        else if (evt.key == 257)
+        {
+            string inserted_text;
+            if (popup_option_index == 0)
+            {
+                auto f = pfd::open_file("select figure to insert", "",
+            { "Image Files (.png .jpg .jpeg .svg)", "*.png *.jpg *.jpeg *.svg",
+                        "All Files", "*" },
+                    pfd::opt::none);
+                const auto result = f.result();
+                if (result.empty())
+                {
+                    is_popup_active = false;
+                    listening_for_hotkey = 1;
+                    info_text = "nothing to insert.";
+                    return;
+                }
+                auto path = filesystem::path(result[0]);
+                auto doc_path = filesystem::path(file_path);
+                inserted_text = "image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + path.filename().string();
+            }
+            else if (popup_option_index == 1)
+            {
+                inserted_text = "ref_id=";
+                for (auto it = doc.figures.rbegin(); it != doc.figures.rend(); ++it)
+                {
+                    if (it->start_offset < cursor_index)
+                    {
+                        if (it == doc.figures.rbegin())
+                        {
+                            is_popup_active = false;
+                            listening_for_hotkey = 1;
+                            info_text = "nothing to insert.";
+                            return;
+                        }
+                        inserted_text += (it - 1)->identifier;
+                    }
+                }
+                if (inserted_text == "ref_id=")
+                {
+                    is_popup_active = false;
+                    listening_for_hotkey = 1;
+                    info_text = "nothing to insert.";
+                    return;
+                }
+            }
+            else if (popup_option_index == 2)
+            {
+                inserted_text = "ref_id=";
+                for (auto it = doc.figures.begin(); it != doc.figures.end(); ++it)
+                {
+                    if (it->start_offset > cursor_index)
+                    {
+                        if (it == doc.figures.begin())
+                        {
+                            is_popup_active = false;
+                            listening_for_hotkey = 1;
+                            info_text = "nothing to insert.";
+                            return;
+                        }
+                        inserted_text += (it - 1)->identifier;
+                    }
+                }
+                if (inserted_text == "ref_id=")
+                {
+                    is_popup_active = false;
+                    listening_for_hotkey = 1;
+                    info_text = "nothing to insert.";
+                    return;
+                }
+            }
+            else if (popup_option_index == 3)
+            {
+                // TODO: show a list of figures to choose from
+            }
+            else
+                return;
+            inserted_text = "%fig{" + inserted_text + "}";
+            text_content.insert(cursor_index, inserted_text);
+            cursor_index += inserted_text.size();
+            clearSelection();
+            checkUndoHistoryState(2);
+            flagUnsaved();
+            updateLines();
+            is_popup_active = false;
+            listening_for_hotkey = 1;
+            info_text = "ready.";
+        }
     }
 
     void drawPopupCitation(Context& ctx)
