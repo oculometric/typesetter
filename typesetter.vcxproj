@@ -137,7 +137,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\document.cpp" />
+    <ClCompile Include="src\editor.cpp" />
+    <ClCompile Include="src\editor_editing.cpp" />
+    <ClCompile Include="src\editor_popups.cpp" />
+    <ClCompile Include="src\editor_rendering.cpp" />
     <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\document.h" />
+    <ClInclude Include="src\editor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
