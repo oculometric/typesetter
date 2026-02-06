@@ -39,6 +39,15 @@ struct Figure
     string target_path;
 };
 
+size_t contextAwareFind(const string& find_target, const string& content, size_t start, size_t end)
+{
+    // TODO: make this aware of brackets, curly braces, and quotes
+    size_t result = content.find(find_target, start);
+    if (result >= end)
+        return string::npos;
+    return result;
+}
+
 struct Document
 {
     string content;
@@ -48,6 +57,7 @@ struct Document
     // TODO: document parsing
     void indexFigures()
     {
+        figures.clear();
         size_t index = 0;
         while (index < content.size())
         {
@@ -60,11 +70,13 @@ struct Document
                     index = content.find('}', start_index);
                     size_t image_tag = contextAwareFind("image=", content, start_index, index);
                     size_t id_tag = contextAwareFind("id=", content, start_index, index);
-                    // TODO: capture characters until the close bracket
-                    // TODO: work through until we find a figure which has an image tag
-                    // add that figure to the array
-                    
-                    continue;
+                    if (image_tag == string::npos || id_tag == string::npos)
+                        continue;
+                    size_t img_end = min(contextAwareFind(";", content, image_tag, index), index);
+                    string img = content.substr(image_tag + strlen("image="), img_end - (image_tag + strlen("image=")));
+                    size_t id_end = min(contextAwareFind(";", content, id_tag, index), index);
+                    string id = content.substr(id_tag + strlen("id="), id_end - (id_tag + strlen("id=")));
+                    figures.emplace_back(start_index, id, img);
                 }
             }
             ++index;
@@ -971,10 +983,16 @@ private:
                 }
                 if (inserted_text == "ref_id=")
                 {
-                    is_popup_active = false;
-                    listening_for_hotkey = 1;
-                    info_text = "nothing to insert.";
-                    return;
+                    auto first = doc.figures.begin();
+                    if (first->start_offset > cursor_index)
+                        inserted_text += first->identifier;
+                    else
+                    {
+                        is_popup_active = false;
+                        listening_for_hotkey = 1;
+                        info_text = "nothing to insert.";
+                        return;
+                    }
                 }
             }
             else if (popup_option_index == 2)
@@ -996,10 +1014,16 @@ private:
                 }
                 if (inserted_text == "ref_id=")
                 {
-                    is_popup_active = false;
-                    listening_for_hotkey = 1;
-                    info_text = "nothing to insert.";
-                    return;
+                    auto last = doc.figures.end() - 1;
+                    if (last->start_offset < cursor_index)
+                        inserted_text += last->identifier;
+                    else
+                    {
+                        is_popup_active = false;
+                        listening_for_hotkey = 1;
+                        info_text = "nothing to insert.";
+                        return;
+                    }
                 }
             }
             else if (popup_option_index == 3)
@@ -1060,6 +1084,7 @@ private:
             }
             is_popup_active = false;
             info_text = "ready.";
+            updateLines();
         }
     }
 
