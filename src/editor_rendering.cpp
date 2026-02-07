@@ -21,7 +21,7 @@ static string getMemorySize(size_t bytes)
 
 void EditorDrawable::render(Context& ctx)
 {
-    checkUndoHistoryState(-1);
+    checkUndoHistoryState(CHANGE_CHECK);
 
     int text_box_left = 1;
     if (!show_line_checker)
@@ -43,7 +43,7 @@ void EditorDrawable::render(Context& ctx)
 
     pushTextPalette(ctx);
 
-    if (is_popup_active)
+    if (popup_state != INACTIVE)
         pushSubtextPalette(ctx);
 
     // header
@@ -73,7 +73,7 @@ void EditorDrawable::render(Context& ctx)
     }
 
     // cursor and selection
-    if (!is_popup_active)
+    if (popup_state == INACTIVE)
     {
         if (selection_end_index != cursor_index)
         {
@@ -123,29 +123,50 @@ void EditorDrawable::render(Context& ctx)
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
     ctx.popPalette();
     
-    if (is_popup_active)
-    {
+    if (popup_state != INACTIVE)
         ctx.popPalette();
-    }
 
     // popup
-    if (is_popup_active)
+    if (popup_state != INACTIVE)
     {
-        ctx.pushBounds(Vec2{ 6, 3 }, ctx.getSize() - Vec2{ 6, 3 });
+        Vec2 size = ctx.getSize() - Vec2{ 12, 6 };
+        
+        if (popup_state != ACTIVE)
+        {
+            popup_timer = max(popup_timer - 0.33f, 0.0f);
+            if (popup_state == OPENING)
+                size.y = (3.0f * popup_timer) + ((float)size.y * (1.0f - popup_timer));
+            else if (popup_state == CLOSING)
+                size.y = ((float)size.y * popup_timer) + (3.0f * (1.0f - popup_timer));
+            if (popup_timer <= 0.0f)
+            {
+                if (popup_state == OPENING)
+                    popup_state = ACTIVE;
+                else if (popup_state == CLOSING)
+                    popup_state = INACTIVE;
+            }
+        }
+        Vec2 position = ((ctx.getSize() - size) / 2);
+        
+        ctx.pushBounds(position, position + size);
         ctx.drawBox(Vec2{ 0, 0 }, ctx.getSize());
         ctx.fill(Vec2{ 1, 1 }, ctx.getSize() - Vec2{ 2, 2 }, ' ');
 
-        switch (popup_index)
+        if (popup_state == ACTIVE)
         {
-        case -1: drawPopupHello(ctx); break;
-        case 0: drawPopupHelp(ctx); break;
-        case 1: drawPopupFigure(ctx); break;
-        case 2: drawPopupCitation(ctx); break;
-        case 3: drawPopupUnsavedConfirm(ctx); break;
+            switch (popup_index)
+            {
+            case SPLASH: drawPopupHello(ctx); break;
+            case HELP: drawPopupHelp(ctx); break;
+            case INSERT_FIGURE: drawPopupFigure(ctx); break;
+            case INSERT_CITATION: drawPopupCitation(ctx); break;
+            case UNSAVED_CONFIRM: drawPopupUnsavedConfirm(ctx); break;
+            case SETTINGS: drawPopupSettings(ctx); break;
+            }
+            pushButtonPalette(ctx);
+            ctx.drawText(Vec2{ ctx.getSize().x - 18, ctx.getSize().y - 1 }, "[ ESC to close ]");
+            ctx.popPalette();
         }
-        pushButtonPalette(ctx);
-        ctx.drawText(Vec2{ ctx.getSize().x - 18, ctx.getSize().y - 1 }, "[ ESC to close ]");
-        ctx.popPalette();
 
         ctx.popBounds();
     }

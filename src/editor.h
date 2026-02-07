@@ -18,16 +18,51 @@ private:
     STRN::Vec2 selection_end_position = { 0, 0 };
     int scroll = 0;
 
+    enum InputState
+    {
+        NORMAL_INPUT,
+        REJECT_NEXT_INPUT,
+        WAITING_FOR_HOTKEY
+    };
+    
+    enum PopupIndex
+    {
+        SPLASH = -1,
+        HELP = 0,
+        INSERT_FIGURE = 1,
+        INSERT_CITATION = 2,
+        UNSAVED_CONFIRM = 3,
+        SETTINGS = 4,
+        FIND = 5
+    };
+    
+    enum PopupState
+    {
+        INACTIVE = 0,
+        ACTIVE = 1,
+        OPENING = 2,
+        CLOSING = 3
+    };
+    
     std::string info_text = "ready.";
-    int listening_for_hotkey = 0;
-    bool is_popup_active = true;
-    int popup_index = -1;
+    InputState input_state = NORMAL_INPUT;
+    PopupState popup_state = ACTIVE;
+    float popup_timer = 0;
+    PopupIndex popup_index = SPLASH;
     int popup_option_index = 0;
 
+    enum ChangeType
+    {
+        CHANGE_CHECK = -1,
+        CHANGE_REGULAR = 0,
+        CHANGE_DELETE = 1,
+        CHANGE_BLOCK = 2
+    };
+    
     std::vector<std::string> undo_history;
     std::vector<std::string> redo_history;
     int changes_since_push = 10000000;
-    int last_change_type = 0; // 0 = regular character, 1 = delete
+    ChangeType last_change_type = CHANGE_REGULAR;
     std::chrono::steady_clock::time_point last_push;
 
     size_t last_counted_words = 0;
@@ -39,12 +74,13 @@ private:
 
     bool show_line_checker = true;
     bool show_hints = true;
-    float distortion = 0.03f;
+    int distortion = 2;
+    const float distortion_options[5] = { 0.0f, 0.01f, 0.03f, 0.06f, 0.1f };
+    bool enable_animations = true;
     
     Document doc;
 
     // TODO: citation popup and list/bibliography [120]
-    // TODO: user settings (toggle line numbers, toggle hints, toggle distortion)
     // TODO: find tool [60]
 
     // TODO: concrete specification [120]
@@ -52,12 +88,13 @@ private:
     // TODO: syntax highlighting
     // TODO: section reference tag
     // TODO: ability to add custom font
-
+    // TODO: review undo history thing (probably broken)
+    // TODO: refactor insert/replace functionality into one function
+    // FIXME: replace \r with \n, unless \r\n, on file load and paste
+    
 public:
     EditorDrawable()
     { pushUndoHistory(); }
-
-    // FIXME: reorganise code
 
     void textEvent(unsigned int chr);
 
@@ -66,6 +103,7 @@ public:
     void render(STRN::Context& ctx) override;
 
     void updateLines();
+    float getDistortion() const { return distortion_options[distortion]; }
 
 private:
     std::pair<size_t, size_t> getSelectionStartLength() const;
@@ -79,9 +117,10 @@ private:
     void cursorRecedeLine();
     void fixScroll();
 
+    void handleCtrlShortcut(STRN::KeyEvent& evt);
     void handleHotkeyFollowup(STRN::KeyEvent& evt);
 
-    void checkUndoHistoryState(int change_type);
+    void checkUndoHistoryState(ChangeType change_type);
     void pushUndoHistory();
     void popUndoHistory();
     void popRedoHistory();
@@ -91,6 +130,8 @@ private:
     static void pushSubtextPalette(STRN::Context& ctx);
     static void pushButtonPalette(STRN::Context& ctx);
 
+    void startPopup(PopupIndex i);
+    void stopPopup(bool reject_next_input = true);
     void drawPopupHello(STRN::Context& ctx);
     void drawPopupHelp(STRN::Context& ctx);
     void drawPopupFigure(STRN::Context& ctx) const;
@@ -98,6 +139,8 @@ private:
     void drawPopupCitation(STRN::Context& ctx);
     void drawPopupUnsavedConfirm(STRN::Context& ctx);
     void keyEventPopupUnsavedConfirm(STRN::KeyEvent& evt);
+    void drawPopupSettings(STRN::Context& ctx);
+    void keyEventPopupSettings(STRN::KeyEvent& evt);
 
     int getCharacterType(size_t index) const;
 

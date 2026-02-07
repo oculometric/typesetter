@@ -18,25 +18,25 @@ bool isRenderable(int c)
 
 void EditorDrawable::textEvent(unsigned int chr)
 {
-    if (is_popup_active)
+    if (popup_state != INACTIVE)
         return;
-    if (listening_for_hotkey > 1)
-        return;
-    if (listening_for_hotkey == 1)
+    if (input_state == REJECT_NEXT_INPUT)
     {
-        listening_for_hotkey = 0;
+        input_state = NORMAL_INPUT;
         return;
     }
+    else if (input_state != NORMAL_INPUT)
+        return;
 
     if (chr != '\\')
     {
         if (selection_end_index != cursor_index)
         {
-            checkUndoHistoryState(2);
+            checkUndoHistoryState(CHANGE_BLOCK);
             eraseSelection();
         }
         else
-            checkUndoHistoryState(0);
+            checkUndoHistoryState(CHANGE_REGULAR);
         text_content.insert(text_content.begin() + cursor_index, (char)chr);
         ++cursor_index;
     }
@@ -45,127 +45,127 @@ void EditorDrawable::textEvent(unsigned int chr)
     updateLines();
 }
 
+void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
+{
+    switch (evt.key)
+    {
+    case ',':
+        startPopup(SETTINGS);
+        break;
+    case 'S':
+        triggerSave();
+        break;
+    case 'O':
+        if (has_unsaved_changes)
+        {
+            startPopup(UNSAVED_CONFIRM);
+            popup_option_index = 1;
+        }
+        else
+            runFileOpenDialog();
+        break;
+    case 'Z':
+        popUndoHistory();
+        if ((evt.modifiers & ~KeyEvent::CTRL) == KeyEvent::SHIFT)
+            popRedoHistory();
+        flagUnsaved();
+        break;
+    case 'H':
+        startPopup(HELP);
+        info_text = "showing help.";
+        break;
+    case 'A':
+        selection_end_index = 0;
+        cursor_index = text_content.size();
+        break;
+    case 'C':
+    {
+        string clipboard = getSelection();
+        clipboardxx::clipboard c;
+        c << clipboard;
+        info_text = "copied " + to_string(clipboard.size()) + " characters.";
+    }
+        break;
+    case 'X':
+    {
+        string clipboard = getSelection();
+        clipboardxx::clipboard c;
+        c << clipboard;
+        if (selection_end_index != cursor_index)
+        {
+            checkUndoHistoryState(CHANGE_BLOCK);
+            eraseSelection();
+        }
+        clearSelection();
+        flagUnsaved();
+        info_text = "cut " + to_string(clipboard.size()) + " characters.";
+    }
+        break;
+    case 'V':
+    {
+        string clipboard;
+        clipboardxx::clipboard c;
+        c >> clipboard;
+        if ((selection_end_index != cursor_index) || clipboard.size() > 0)
+            checkUndoHistoryState(CHANGE_BLOCK);
+        if (selection_end_index != cursor_index)
+            eraseSelection();
+        clearSelection();
+        text_content.insert(cursor_index, clipboard);
+        cursor_index += clipboard.size();
+        clearSelection();
+        flagUnsaved();
+        info_text = "pasted " + to_string(clipboard.size()) + " characters.";
+    }
+        break;
+    }
+}
+
 void EditorDrawable::keyEvent(KeyEvent& evt)
 {
     if (evt.pressed)
     {
-        if (is_popup_active)
+        if (popup_state == ACTIVE)
         {
             if (evt.key == 256)
             {
-                is_popup_active = false;
+                stopPopup(false);
                 info_text = "ready.";
             }
-            if (popup_index == -1)
+            switch (popup_index)
             {
-                is_popup_active = false;
-                listening_for_hotkey = 1;
+            case SPLASH:
+                stopPopup();
                 info_text = "ready.";
-            }
-            if (popup_index == 3)
+                break;
+            case UNSAVED_CONFIRM:
                 keyEventPopupUnsavedConfirm(evt);
-            else if (popup_index == 1)
+                break;
+            case INSERT_FIGURE:
                 keyEventPopupFigure(evt);
+                break;
+            case SETTINGS:
+                keyEventPopupSettings(evt);
+                break;
+            }
             return;
         }
 
-        if (listening_for_hotkey == 1)
-            listening_for_hotkey = 0;
-        else if (listening_for_hotkey == 2)
+        if (input_state == REJECT_NEXT_INPUT)
+            input_state = NORMAL_INPUT;
+        else if (input_state == WAITING_FOR_HOTKEY)
         {
             handleHotkeyFollowup(evt);
             return;
         }
+        
+        if (evt.modifiers & KeyEvent::CTRL)
+            handleCtrlShortcut(evt);
            
         switch (evt.key)
         {
-        case 'S':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                triggerSave();
-            }
-            break;
-        case 'O':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                if (has_unsaved_changes)
-                {
-                    is_popup_active = true;
-                    popup_index = 3;
-                    popup_option_index = 1;
-                }
-                else
-                    runFileOpenDialog();
-            }
-            break;
-        case 'Z':
-            if (evt.modifiers == KeyEvent::CTRL)
-                popUndoHistory();
-            else if (evt.modifiers == (KeyEvent::CTRL | KeyEvent::SHIFT))
-                popRedoHistory();
-            flagUnsaved();
-            break;
-        case 'H':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                is_popup_active = true;
-                popup_index = 0;
-                listening_for_hotkey = 0;
-                info_text = "showing help.";
-            }
-            break;
-        case 'A':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                selection_end_index = 0;
-                cursor_index = text_content.size();
-            }
-            break;
-        case 'C':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                string clipboard = getSelection();
-                clipboardxx::clipboard c;
-                c << clipboard;
-                info_text = "copied " + to_string(clipboard.size()) + " characters.";
-            }
-            break;
-        case 'X':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                string clipboard = getSelection();
-                clipboardxx::clipboard c;
-                c << clipboard;
-                if (selection_end_index != cursor_index)
-                {
-                    checkUndoHistoryState(2);
-                    eraseSelection();
-                }
-                clearSelection();
-                flagUnsaved();
-                info_text = "cut " + to_string(clipboard.size()) + " characters.";
-            }
-            break;
-        case 'V':
-            if (evt.modifiers == KeyEvent::CTRL)
-            {
-                string clipboard;
-                clipboardxx::clipboard c;
-                c >> clipboard; // FIXME: replace \r with \n, unless \r\n, including on file load!!
-                if ((selection_end_index != cursor_index) || clipboard.size() > 0)
-                    checkUndoHistoryState(2);
-                if (selection_end_index != cursor_index)
-                    eraseSelection();
-                clearSelection();
-                text_content.insert(cursor_index, clipboard);
-                cursor_index += clipboard.size();
-                clearSelection();
-                flagUnsaved();
-                info_text = "pasted " + to_string(clipboard.size()) + " characters.";
-            }
-            break;
         case '\\': // hotkey trigger
-            listening_for_hotkey = 2;
+            input_state = WAITING_FOR_HOTKEY;
             info_text = "waiting for hotkey...";
             break;
         case 259: // backspace
@@ -173,12 +173,12 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
                 selection_end_index = findPrevWord(cursor_index);
             if (selection_end_index != cursor_index)
             {
-                checkUndoHistoryState(2);
+                checkUndoHistoryState(CHANGE_BLOCK);
                 eraseSelection();
             }
             else if (cursor_index > 0)
             {
-                checkUndoHistoryState(1);
+                checkUndoHistoryState(CHANGE_DELETE);
                 text_content.erase(text_content.begin() + cursor_index - 1);
                 --cursor_index;
             }
@@ -190,12 +190,12 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
                 cursor_index = findNextWord(cursor_index);
             if (selection_end_index != cursor_index)
             {
-                checkUndoHistoryState(2);
+                checkUndoHistoryState(CHANGE_BLOCK);
                 eraseSelection();
             }
             else
             {
-                checkUndoHistoryState(1);
+                checkUndoHistoryState(CHANGE_DELETE);
                 text_content.erase(text_content.begin() + cursor_index);
             }
             clearSelection();
@@ -281,9 +281,7 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
     switch (evt.key)
     {
     case 'C':
-        is_popup_active = true;
-        popup_index = 2;
-        listening_for_hotkey = 0;
+        startPopup(INSERT_CITATION);
         info_text = "showing citation selector.";
 
         //checkUndoHistoryState(2);
@@ -292,12 +290,12 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
         //flagUnsaved();
         break;
     case 'B':
-        checkUndoHistoryState(2);
+        checkUndoHistoryState(CHANGE_BLOCK);
         surroundSelection('*');
         flagUnsaved();
         break;
     case 'I':
-        checkUndoHistoryState(2);
+        checkUndoHistoryState(CHANGE_BLOCK);
         surroundSelection('_');
         flagUnsaved();
         break;
@@ -307,21 +305,19 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
             info_text = "document must be saved before figures can be inserted.";
             break;
         }
-            
-        is_popup_active = true;
-        popup_index = 1;
-        listening_for_hotkey = 0;
+        
+        startPopup(INSERT_FIGURE);
         info_text = "showing figure selector.";
         break;
     case 'M':
-        checkUndoHistoryState(2);
+        checkUndoHistoryState(CHANGE_BLOCK);
         text_content.insert(cursor_index, "%math{}");
         cursor_index += strlen("%math{");
         clearSelection();
         flagUnsaved();
         break;
     case 'X':
-        checkUndoHistoryState(2);
+        checkUndoHistoryState(CHANGE_BLOCK);
         text_content.insert(cursor_index, "%code{}");
         cursor_index += strlen("%code{");
         clearSelection();
@@ -330,11 +326,11 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
     case '\\':
         if (selection_end_index != cursor_index)
         {
-            checkUndoHistoryState(2);
+            checkUndoHistoryState(CHANGE_BLOCK);
             eraseSelection();
         }
         else
-            checkUndoHistoryState(0);
+            checkUndoHistoryState(CHANGE_REGULAR);
         text_content.insert(text_content.begin() + cursor_index, '\\');
         ++cursor_index;
         clearSelection();
@@ -344,7 +340,7 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
         info_text = "unrecognised hotkey.";
         break;
     }
-    listening_for_hotkey = 1;
+    input_state = REJECT_NEXT_INPUT;
     updateLines();
 }
 

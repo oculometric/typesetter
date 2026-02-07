@@ -19,6 +19,21 @@ const char* saturn_ascii =
 "          # -# "
 "            ## ";
 
+void EditorDrawable::startPopup(PopupIndex i)
+{
+    popup_state = OPENING;
+    popup_timer = 1.0f;
+    popup_index = i;
+}
+
+void EditorDrawable::stopPopup(bool reject_next_input)
+{
+    popup_state = CLOSING;
+    popup_timer = 1.0f;
+    if (reject_next_input)
+        input_state = REJECT_NEXT_INPUT;
+}
+
 void EditorDrawable::drawPopupHello(Context& ctx)
 {
     pushTitlePalette(ctx);
@@ -120,8 +135,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             const auto result = f.result();
             if (result.empty())
             {
-                is_popup_active = false;
-                listening_for_hotkey = 1;
+                stopPopup();
                 info_text = "nothing to insert.";
                 return;
             }
@@ -138,8 +152,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                 {
                     if (it == doc.figures.rbegin())
                     {
-                        is_popup_active = false;
-                        listening_for_hotkey = 1;
+                        stopPopup();
                         info_text = "nothing to insert.";
                         return;
                     }
@@ -153,8 +166,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     inserted_text += first->identifier;
                 else
                 {
-                    is_popup_active = false;
-                    listening_for_hotkey = 1;
+                    stopPopup();
                     info_text = "nothing to insert.";
                     return;
                 }
@@ -169,8 +181,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                 {
                     if (it == doc.figures.begin())
                     {
-                        is_popup_active = false;
-                        listening_for_hotkey = 1;
+                        stopPopup();
                         info_text = "nothing to insert.";
                         return;
                     }
@@ -184,8 +195,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     inserted_text += last->identifier;
                 else
                 {
-                    is_popup_active = false;
-                    listening_for_hotkey = 1;
+                    stopPopup();
                     info_text = "nothing to insert.";
                     return;
                 }
@@ -201,11 +211,10 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
         text_content.insert(cursor_index, inserted_text);
         cursor_index += inserted_text.size();
         clearSelection();
-        checkUndoHistoryState(2);
+        checkUndoHistoryState(CHANGE_BLOCK);
         flagUnsaved();
         updateLines();
-        is_popup_active = false;
-        listening_for_hotkey = 1;
+        stopPopup();
         info_text = "ready.";
     }
 }
@@ -247,8 +256,60 @@ void EditorDrawable::keyEventPopupUnsavedConfirm(KeyEvent& evt)
             triggerSave();
             runFileOpenDialog();
         }
-        is_popup_active = false;
+        stopPopup();
         info_text = "ready.";
         updateLines();
+    }
+}
+
+void EditorDrawable::drawPopupSettings(Context& ctx)
+{
+    pushTitlePalette(ctx);
+    ctx.drawText(Vec2{ 2, 0 }, "[ SETTINGS ]");
+    ctx.popPalette();
+    
+    pushButtonPalette(ctx);
+    static const string enabled = "-\xFE  [ ON  ]";
+    static const string disabled = "\xFE-  [ OFF ]";
+    ctx.drawText(Vec2{ 3, 3 }, (show_line_checker ? enabled : disabled) + " - line checker", (popup_option_index == 0) ? 1 : 0);
+    ctx.drawText(Vec2{ 3, 4 }, (show_hints ? enabled : disabled) + " - hotkey hints", (popup_option_index == 1) ? 1 : 0);
+    ctx.drawText(Vec2{ 3, 5 }, (enable_animations ? enabled : disabled) + " - UI animations", (popup_option_index == 2) ? 1 : 0);
+    
+    string distortion_str(5, '\xC4');
+    distortion_str[distortion] = '\xFE';
+    distortion_str += format("  [ {:.2f} ]", distortion_options[distortion]);
+    ctx.drawText(Vec2{ 3, 7 }, distortion_str + " - screen distortion", (popup_option_index == 3) ? 1 : 0);
+    ctx.popPalette();
+}
+
+void EditorDrawable::keyEventPopupSettings(KeyEvent& evt)
+{
+    if (evt.key == 265)
+        popup_option_index = max(0, popup_option_index - 1);
+    else if (evt.key == 264)
+        popup_option_index = min(3, popup_option_index + 1);
+    else if (evt.key == 263 || evt.key == 262 || evt.key == 257)
+    {
+        bool* setting = nullptr;
+        switch (popup_option_index)
+        {
+        case 0: setting = &show_line_checker; break;
+        case 1: setting = &show_hints; break;
+        case 2: setting = &enable_animations; break;
+        case 3: 
+            if (evt.key == 262)
+                distortion = min(4, distortion + 1);
+            else if (evt.key == 263)
+                distortion = max(0, distortion - 1);
+            break;
+        }
+        if (setting == nullptr)
+            return;
+        if (evt.key == 262)
+            *setting = true;
+        else if (evt.key == 263)
+            *setting = false;
+        else if (evt.key == 257)
+            *setting = !(*setting);
     }
 }

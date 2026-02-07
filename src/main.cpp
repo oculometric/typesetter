@@ -54,6 +54,7 @@ int main()
             e->textEvent(chr);
             chr = comp.getCharEvent();
         }
+        comp.setDistortion(e->getDistortion());
         auto now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = now - last;        
         auto sleep_duration = ideal_frame_time - duration;

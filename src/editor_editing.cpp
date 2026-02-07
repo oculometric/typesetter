@@ -158,25 +158,23 @@ void EditorDrawable::fixScroll()
         --scroll;
 }
 
-void EditorDrawable::checkUndoHistoryState(int change_type)
+void EditorDrawable::checkUndoHistoryState(ChangeType change_type)
 {
-    if (change_type != -1)
+    if (change_type != CHANGE_CHECK)
         redo_history.clear();
 
-    if (change_type >= 0)
+    if (change_type >= CHANGE_REGULAR)
         ++changes_since_push;
 
     // 2 = cut/paste/delete block
-    if (change_type == 2)
+    if (change_type == CHANGE_BLOCK)
         pushUndoHistory();
-    else if ((change_type != -1) && (change_type != last_change_type) && (changes_since_push > 5))
+    else if ((change_type != CHANGE_CHECK) && (change_type != last_change_type) && (changes_since_push > 5))
         pushUndoHistory();
     else if (changes_since_push > 10)
         pushUndoHistory();
     else if (changes_since_push == 0)
-    {
         last_push = chrono::steady_clock::now();
-    }
     else
     {
         chrono::duration<float> time = chrono::steady_clock::now() - last_push;
