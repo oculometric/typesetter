@@ -365,3 +365,21 @@ size_t EditorDrawable::countWords()
     last_word_count = chrono::steady_clock::now();
     return words;
 }
+
+void EditorDrawable::fixRN(string& str)
+{
+    for (auto it = str.begin(); it != str.end(); ++it)
+    {
+        if (*it == '\r')
+        {
+            if (it + 1 == str.end() || *(it + 1) != '\n')
+                *it = '\n';
+            else
+            {
+                ++it;
+                str.erase(it - 1);
+                --it;
+            }
+        }
+    }
+}

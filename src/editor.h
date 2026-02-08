@@ -80,7 +80,6 @@ private:
     
     Document doc;
 
-    // FIXME: replace \r with \n, unless \r\n, on file load and paste
     // TODO: find tool [60]
     // TODO: citation popup and list/bibliography [120]
 
@@ -153,6 +152,7 @@ private:
     size_t findStartOfLine(size_t current) const;
 
     size_t countWords();
+    static void fixRN(std::string& str);
 
     void flagUnsaved() { has_unsaved_changes = true; }
     void triggerSave();

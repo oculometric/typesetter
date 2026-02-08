@@ -94,6 +94,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         string clipboard;
         clipboardxx::clipboard c;
         c >> clipboard;
+        fixRN(clipboard);
         insertReplace(clipboard);
         info_text = "pasted " + to_string(clipboard.size()) + " characters.";
     }
@@ -331,7 +332,9 @@ void EditorDrawable::runFileOpenDialog()
             ifstream file_stream(file, ios::ate);
             cursor_index = 0;
             clearSelection();
+            text_content.clear();
             text_content.resize(file_stream.tellg());
+            fixRN(text_content);
             file_stream.seekg(ios::beg);
             file_stream.read(text_content.data(), text_content.size());
             undo_history.clear();
