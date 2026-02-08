@@ -222,11 +222,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\document.h" />
     <ClInclude Include="src\editor.h" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Source Files\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="typesetter.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\Downloads\iapetus.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
