@@ -29,19 +29,7 @@ void EditorDrawable::textEvent(unsigned int chr)
         return;
 
     if (chr != '\\')
-    {
-        if (selection_end_index != cursor_index)
-        {
-            checkUndoHistoryState(CHANGE_BLOCK);
-            eraseSelection();
-        }
-        else
-            checkUndoHistoryState(CHANGE_REGULAR);
-        text_content.insert(text_content.begin() + cursor_index, (char)chr);
-        ++cursor_index;
-    }
-    flagUnsaved();
-    clearSelection();
+        insertReplace(chr);
     updateLines();
 }
 
@@ -106,15 +94,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         string clipboard;
         clipboardxx::clipboard c;
         c >> clipboard;
-        if ((selection_end_index != cursor_index) || clipboard.size() > 0)
-            checkUndoHistoryState(CHANGE_BLOCK);
-        if (selection_end_index != cursor_index)
-            eraseSelection();
-        clearSelection();
-        text_content.insert(cursor_index, clipboard);
-        cursor_index += clipboard.size();
-        clearSelection();
-        flagUnsaved();
+        insertReplace(clipboard);
         info_text = "pasted " + to_string(clipboard.size()) + " characters.";
     }
         break;
@@ -172,34 +152,21 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
             if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
                 selection_end_index = findPrevWord(cursor_index);
             if (selection_end_index != cursor_index)
-            {
-                checkUndoHistoryState(CHANGE_BLOCK);
                 eraseSelection();
-            }
             else if (cursor_index > 0)
             {
-                checkUndoHistoryState(CHANGE_DELETE);
-                text_content.erase(text_content.begin() + cursor_index - 1);
+                erase(cursor_index - 1);
                 --cursor_index;
+                clearSelection();
             }
-            clearSelection();
-            flagUnsaved();
             break;
         case 261: // delete
             if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
                 cursor_index = findNextWord(cursor_index);
             if (selection_end_index != cursor_index)
-            {
-                checkUndoHistoryState(CHANGE_BLOCK);
                 eraseSelection();
-            }
             else
-            {
-                checkUndoHistoryState(CHANGE_DELETE);
-                text_content.erase(text_content.begin() + cursor_index);
-            }
-            clearSelection();
-            flagUnsaved();
+                erase(cursor_index);
             break;
         case 263: // left arrow
             if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
@@ -290,14 +257,10 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
         //flagUnsaved();
         break;
     case 'B':
-        checkUndoHistoryState(CHANGE_BLOCK);
         surroundSelection('*');
-        flagUnsaved();
         break;
     case 'I':
-        checkUndoHistoryState(CHANGE_BLOCK);
         surroundSelection('_');
-        flagUnsaved();
         break;
     case 'F':
         if (needs_save_as)
@@ -310,31 +273,13 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
         info_text = "showing figure selector.";
         break;
     case 'M':
-        checkUndoHistoryState(CHANGE_BLOCK);
-        text_content.insert(cursor_index, "%math{}");
-        cursor_index += strlen("%math{");
-        clearSelection();
-        flagUnsaved();
+        insertReplace("%math{}");
         break;
     case 'X':
-        checkUndoHistoryState(CHANGE_BLOCK);
-        text_content.insert(cursor_index, "%code{}");
-        cursor_index += strlen("%code{");
-        clearSelection();
-        flagUnsaved();
+        insertReplace("%code{}");
         break;
     case '\\':
-        if (selection_end_index != cursor_index)
-        {
-            checkUndoHistoryState(CHANGE_BLOCK);
-            eraseSelection();
-        }
-        else
-            checkUndoHistoryState(CHANGE_REGULAR);
-        text_content.insert(text_content.begin() + cursor_index, '\\');
-        ++cursor_index;
-        clearSelection();
-        flagUnsaved();
+        insertReplace('\\');
         break;
     default:
         info_text = "unrecognised hotkey.";
@@ -384,6 +329,8 @@ void EditorDrawable::runFileOpenDialog()
         if (filesystem::is_regular_file(file))
         {
             ifstream file_stream(file, ios::ate);
+            cursor_index = 0;
+            clearSelection();
             text_content.resize(file_stream.tellg());
             file_stream.seekg(ios::beg);
             file_stream.read(text_content.data(), text_content.size());

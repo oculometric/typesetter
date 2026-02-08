@@ -80,17 +80,16 @@ private:
     
     Document doc;
 
-    // TODO: citation popup and list/bibliography [120]
+    // FIXME: replace \r with \n, unless \r\n, on file load and paste
     // TODO: find tool [60]
+    // TODO: citation popup and list/bibliography [120]
 
+    // TODO: section reference tag
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
-    // TODO: syntax highlighting
-    // TODO: section reference tag
-    // TODO: ability to add custom font
     // TODO: review undo history thing (probably broken)
-    // TODO: refactor insert/replace functionality into one function
-    // FIXME: replace \r with \n, unless \r\n, on file load and paste
+    // TODO: syntax highlighting
+    // TODO: ability to add custom font
     
 public:
     EditorDrawable()
@@ -107,6 +106,10 @@ public:
 
 private:
     std::pair<size_t, size_t> getSelectionStartLength() const;
+    void insertReplace(const std::string& str);
+    void insertReplace(char c);
+    void insert(size_t offset, char c);
+    void erase(size_t offset);
     void eraseSelection();
     std::string getSelection() const;
     void clearSelection();

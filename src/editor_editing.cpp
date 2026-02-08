@@ -49,16 +49,55 @@ pair<size_t, size_t> EditorDrawable::getSelectionStartLength() const
     return { min_index, (max_index - min_index) + 1 };
 }
 
+void EditorDrawable::insertReplace(const string& str)
+{
+    if (selection_end_index != cursor_index)
+        eraseSelection();
+    else
+        checkUndoHistoryState(CHANGE_BLOCK);
+    text_content.insert(cursor_index, str);
+    cursor_index += str.size();
+    clearSelection();
+    flagUnsaved();
+}
+
+void EditorDrawable::insertReplace(char c)
+{
+    if (selection_end_index != cursor_index)
+        eraseSelection();
+    else
+        checkUndoHistoryState(CHANGE_REGULAR);
+    insert(cursor_index, c);
+    ++cursor_index;
+    clearSelection();
+    flagUnsaved();
+}
+
+void EditorDrawable::insert(size_t offset, char c)
+{
+    text_content.insert(text_content.begin() + offset, c);
+    checkUndoHistoryState(CHANGE_REGULAR);
+    flagUnsaved();
+}
+
+void EditorDrawable::erase(size_t offset)
+{
+    text_content.erase(text_content.begin() + offset);
+    checkUndoHistoryState(CHANGE_DELETE);
+    flagUnsaved();
+}
+
 void EditorDrawable::eraseSelection()
 {
     if (selection_end_index == cursor_index)
         return;
 
     auto [min_index, length] = getSelectionStartLength();
-
     cursor_index = min_index;
-
     text_content.erase(min_index, length);
+    checkUndoHistoryState(CHANGE_BLOCK);
+    clearSelection();
+    flagUnsaved();
 }
 
 string EditorDrawable::getSelection() const
@@ -79,19 +118,22 @@ void EditorDrawable::clearSelection()
 
 void EditorDrawable::surroundSelection(char c)
 {
+    checkUndoHistoryState(CHANGE_BLOCK);
     if (selection_end_index != cursor_index)
     {
         auto [start, length] = getSelectionStartLength();
-        text_content.insert(text_content.begin() + start, c);
-        text_content.insert(text_content.begin() + min(start + length + 1, text_content.size()), c);
-        cursor_index += 2;
+        insert(start, c);
+        insert(min(start + length + 1, text_content.size()), c);
+        cursor_index = start + length;
     }
     else
     {
-        text_content.insert(cursor_index, 2, c);
+        insert(cursor_index, c);
+        insert(cursor_index, c);
         ++cursor_index;
     }
     clearSelection();
+    flagUnsaved();
 }
 
 Vec2 EditorDrawable::calculatePosition(size_t index) const
@@ -160,6 +202,8 @@ void EditorDrawable::fixScroll()
 
 void EditorDrawable::checkUndoHistoryState(ChangeType change_type)
 {
+    // FIXME: this is broken rn
+    return;
     if (change_type != CHANGE_CHECK)
         redo_history.clear();
 

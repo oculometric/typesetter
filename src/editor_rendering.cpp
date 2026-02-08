@@ -47,7 +47,9 @@ void EditorDrawable::render(Context& ctx)
         pushSubtextPalette(ctx);
 
     // header
-    ctx.drawText({ 1, 0 }, "[ TYPECETTER ] - editing " + filesystem::path(file_path).filename().string());
+    static const string unsaved_editing = "[ IAPETUS ] (*) editing ";
+    static const string saved_editing = "[ IAPETUS ] - editing ";
+    ctx.drawText({ 1, 0 }, (has_unsaved_changes ? unsaved_editing : saved_editing) + filesystem::path(file_path).filename().string());
     string file_size = getMemorySize(text_content.size());
     ctx.drawText(Vec2{ static_cast<int>(ctx.getSize().x - (file_size.size() + 2)), 0 }, file_size);
     ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
