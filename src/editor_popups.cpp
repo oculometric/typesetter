@@ -83,6 +83,8 @@ void EditorDrawable::drawPopupHelp(Context& ctx)
     ctx.drawText(Vec2{ 3, 16 }, "\\, I             : italic selection");
     ctx.drawText(Vec2{ 3, 17 }, "\\, M             : insert math block");
     ctx.drawText(Vec2{ 3, 18 }, "\\, X             : insert code block");
+    ctx.drawText(Vec2{ 3, 18 }, "\\, S             : insert section marker");
+    ctx.drawText(Vec2{ 3, 18 }, "\\, R             : insert section reference");
 }
 
 void EditorDrawable::drawPopupFigure(Context& ctx) const
@@ -141,11 +143,11 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             }
             auto path = filesystem::path(result[0]);
             auto doc_path = filesystem::path(file_path);
-            inserted_text = "image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + path.filename().string();
+            inserted_text = "%fig{image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + path.filename().string();
         }
         else if (popup_option_index == 1)
         {
-            inserted_text = "ref_id=";
+            inserted_text = "%figref{id=";
             for (auto it = doc.figures.rbegin(); it != doc.figures.rend(); ++it)
             {
                 if (it->start_offset < cursor_index)
@@ -159,7 +161,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     inserted_text += (it - 1)->identifier;
                 }
             }
-            if (inserted_text == "ref_id=")
+            if (inserted_text == "%figref{id=")
             {
                 auto first = doc.figures.begin();
                 if (first->start_offset > cursor_index)
@@ -174,7 +176,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
         }
         else if (popup_option_index == 2)
         {
-            inserted_text = "ref_id=";
+            inserted_text = "%figref{id=";
             for (auto it = doc.figures.begin(); it != doc.figures.end(); ++it)
             {
                 if (it->start_offset > cursor_index)
@@ -188,7 +190,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     inserted_text += (it - 1)->identifier;
                 }
             }
-            if (inserted_text == "ref_id=")
+            if (inserted_text == "%figref{id=")
             {
                 auto last = doc.figures.end() - 1;
                 if (last->start_offset < cursor_index)
@@ -207,7 +209,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
         }
         else
             return;
-        inserted_text = "%fig{" + inserted_text + "}";
+        inserted_text =  inserted_text + "}";
         text_content.insert(cursor_index, inserted_text);
         cursor_index += inserted_text.size();
         clearSelection();

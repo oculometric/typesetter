@@ -269,15 +269,28 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
             info_text = "document must be saved before figures can be inserted.";
             break;
         }
-        
         startPopup(INSERT_FIGURE);
         info_text = "showing figure selector.";
         break;
     case 'M':
         insertReplace("%math{}");
+        --cursor_index;
+        clearSelection();
         break;
     case 'X':
         insertReplace("%code{}");
+        --cursor_index;
+        clearSelection();
+        break;
+    case 'S':
+        insertReplace("%section{id=\"\"}");
+        cursor_index -= 2;
+        clearSelection();
+        break;
+    case 'R':
+        insertReplace("%sectref{id=\"\"}");
+        cursor_index -= 2;
+        clearSelection();
         break;
     case '\\':
         insertReplace('\\');

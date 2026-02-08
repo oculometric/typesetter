@@ -122,12 +122,18 @@ void EditorDrawable::render(Context& ctx)
     ctx.drawText({ 1, text_box_bottom }, info_text);
     ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
     if (show_hints)
-        ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code");
+        ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code  (S)ection  (R)eference section");
     ctx.popPalette();
     
     if (popup_state != INACTIVE)
         ctx.popPalette();
 
+    if (popup_state != INACTIVE && popup_state != ACTIVE && !enable_animations)
+    {
+        popup_state = (popup_state == OPENING) ? ACTIVE : INACTIVE;
+        popup_timer = 0.0f;
+    }
+    
     // popup
     if (popup_state != INACTIVE)
     {

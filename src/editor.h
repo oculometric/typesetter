@@ -81,9 +81,9 @@ private:
     Document doc;
 
     // TODO: find tool [60]
+    // TODO: generate unique IDs
     // TODO: citation popup and list/bibliography [120]
 
-    // TODO: section reference tag
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
     // TODO: review undo history thing (probably broken)
