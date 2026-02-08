@@ -205,6 +205,8 @@ void EditorDrawable::fixScroll()
 
 void EditorDrawable::checkUndoHistoryState(ChangeType change_type)
 {
+    if (change_type != CHANGE_CHECK)
+        last_change = chrono::steady_clock::now();
     // FIXME: this is broken rn
     return;
     if (change_type != CHANGE_CHECK)
@@ -385,4 +387,10 @@ void EditorDrawable::fixRN(string& str)
             }
         }
     }
+}
+
+void EditorDrawable::setStatusText(const string& text)
+{
+    info_text = text;
+    info_text_limit = 2;
 }

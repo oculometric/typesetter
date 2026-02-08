@@ -52,7 +52,13 @@ void EditorDrawable::render(Context& ctx)
     ctx.drawText({ 1, 0 }, (has_unsaved_changes ? unsaved_editing : saved_editing) + filesystem::path(file_path).filename().string());
     string file_size = getMemorySize(text_content.size());
     ctx.drawText(Vec2{ static_cast<int>(ctx.getSize().x - (file_size.size() + 2)), 0 }, file_size);
-    ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
+    chrono::duration<float> since_last_edit = chrono::steady_clock::now() - last_change;
+    chrono::duration<float> since_epoch = chrono::steady_clock::now().time_since_epoch();
+    auto epoch = since_epoch.count();
+    if (since_last_edit.count() < 1.0f && enable_animations)
+        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x07, (int)(epoch * 4) % 2);
+    else
+        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
     ctx.drawBox({ text_box_left, text_box_top }, text_box_size);
         
     // text content
@@ -117,9 +123,10 @@ void EditorDrawable::render(Context& ctx)
 
     // help/status bar
     pushSubtextPalette(ctx);
-    ctx.drawText({ 1, text_box_bottom }, info_text);
+    ctx.drawText({ 1, text_box_bottom }, info_text, 0, 0, enable_animations ? info_text_limit : -1);
+    if (enable_animations)
+        info_text_limit = min(info_text_limit + 8, info_text.size());
     string words_count = to_string(countWords()) + " words.";
-    ctx.drawText({ 1, text_box_bottom }, info_text);
     ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
     if (show_hints)
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code  (S)ection  (R)eference section");

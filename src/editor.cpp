@@ -60,7 +60,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         break;
     case 'H':
         startPopup(HELP);
-        info_text = "showing help.";
+        setStatusText("showing help.");
         break;
     case 'A':
         selection_end_index = 0;
@@ -71,7 +71,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         string clipboard = getSelection();
         clipboardxx::clipboard c;
         c << clipboard;
-        info_text = "copied " + to_string(clipboard.size()) + " characters.";
+        setStatusText("copied " + to_string(clipboard.size()) + " characters.");
     }
         break;
     case 'X':
@@ -86,7 +86,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         }
         clearSelection();
         flagUnsaved();
-        info_text = "cut " + to_string(clipboard.size()) + " characters.";
+        setStatusText("cut " + to_string(clipboard.size()) + " characters.");
     }
         break;
     case 'V':
@@ -96,7 +96,7 @@ void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
         c >> clipboard;
         fixRN(clipboard);
         insertReplace(clipboard);
-        info_text = "pasted " + to_string(clipboard.size()) + " characters.";
+        setStatusText("pasted " + to_string(clipboard.size()) + " characters.");
     }
         break;
     }
@@ -111,13 +111,13 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
             if (evt.key == 256)
             {
                 stopPopup(false);
-                info_text = "ready.";
+                setStatusText("ready.");
             }
             switch (popup_index)
             {
             case SPLASH:
                 stopPopup();
-                info_text = "ready.";
+                setStatusText("ready.");
                 break;
             case UNSAVED_CONFIRM:
                 keyEventPopupUnsavedConfirm(evt);
@@ -147,7 +147,7 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
         {
         case '\\': // hotkey trigger
             input_state = WAITING_FOR_HOTKEY;
-            info_text = "waiting for hotkey...";
+            setStatusText("waiting for hotkey...");
             break;
         case 259: // backspace
             if ((evt.modifiers & ~KeyEvent::SHIFT) == KeyEvent::CTRL)
@@ -245,12 +245,12 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
 
 void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
 {
-    info_text = "ready.";
+    setStatusText("ready.");
     switch (evt.key)
     {
     case 'C':
         startPopup(INSERT_CITATION);
-        info_text = "showing citation selector.";
+        setStatusText("showing citation selector.");
 
         //checkUndoHistoryState(2);
         //text_content.insert(cursor_index, "%cite{}");
@@ -266,11 +266,11 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
     case 'F':
         if (needs_save_as)
         {
-            info_text = "document must be saved before figures can be inserted.";
+            setStatusText("document must be saved before figures can be inserted.");
             break;
         }
         startPopup(INSERT_FIGURE);
-        info_text = "showing figure selector.";
+        setStatusText("showing figure selector.");
         break;
     case 'M':
         insertReplace("%math{}");
@@ -296,7 +296,7 @@ void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
         insertReplace('\\');
         break;
     default:
-        info_text = "unrecognised hotkey.";
+        setStatusText("unrecognised hotkey.");
         break;
     }
     input_state = REJECT_NEXT_INPUT;
@@ -358,6 +358,6 @@ void EditorDrawable::runFileOpenDialog()
             needs_save_as = false;
         }
         else
-            info_text = "file is not a regular text file.";
+            setStatusText("file is not a regular text file.");
     }
 }

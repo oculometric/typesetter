@@ -45,6 +45,7 @@ private:
     };
     
     std::string info_text = "ready.";
+    size_t info_text_limit = 0;
     InputState input_state = NORMAL_INPUT;
     PopupState popup_state = ACTIVE;
     float popup_timer = 0;
@@ -64,6 +65,7 @@ private:
     int changes_since_push = 10000000;
     ChangeType last_change_type = CHANGE_REGULAR;
     std::chrono::steady_clock::time_point last_push;
+    std::chrono::steady_clock::time_point last_change;
 
     size_t last_counted_words = 0;
     std::chrono::steady_clock::time_point last_word_count;
@@ -80,7 +82,6 @@ private:
     
     Document doc;
 
-    // TODO: more animations
     // TODO: citation popup and list/bibliography [120]
     // TODO: find tool [60]
     // TODO: word wrapping
@@ -139,7 +140,7 @@ private:
     void stopPopup(bool reject_next_input = true);
     void drawPopupHello(STRN::Context& ctx);
     void drawPopupHelp(STRN::Context& ctx);
-    void drawPopupFigure(STRN::Context& ctx) const;
+    void drawPopupFigure(STRN::Context& ctx);
     void keyEventPopupFigure(STRN::KeyEvent& evt);
     void drawPopupCitation(STRN::Context& ctx);
     void drawPopupUnsavedConfirm(STRN::Context& ctx);
@@ -157,6 +158,7 @@ private:
     size_t countWords();
     static void fixRN(std::string& str);
 
+    void setStatusText(const std::string& text);
     void flagUnsaved() { has_unsaved_changes = true; }
     void triggerSave();
     void runFileOpenDialog();

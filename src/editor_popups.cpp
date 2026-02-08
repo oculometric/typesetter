@@ -87,7 +87,7 @@ void EditorDrawable::drawPopupHelp(Context& ctx)
     ctx.drawText(Vec2{ 3, 18 }, "\\, R             : insert section reference");
 }
 
-void EditorDrawable::drawPopupFigure(Context& ctx) const
+void EditorDrawable::drawPopupFigure(Context& ctx)
 {
     pushTitlePalette(ctx);
     ctx.drawText(Vec2{ 2, 0 }, "[ FIGURE SELECTOR ]");
@@ -104,16 +104,16 @@ void EditorDrawable::drawPopupFigure(Context& ctx) const
     switch (popup_option_index)
     {
     case 0:
-        info_text = "select a new image file to insert.";
+        setStatusText("select a new image file to insert.");
         break;
     case 1:
-        info_text = "reference the next figure after the cursor";
+        setStatusText("reference the next figure after the cursor");
         break;
     case 2:
-        info_text = "reference the last figure before the cursor.";
+        setStatusText("reference the last figure before the cursor.");
         break;
     case 3:
-        info_text = "select an existing figure to reference.";
+        setStatusText("select an existing figure to reference.");
         break;
     }
     ctx.drawTextWrapped(Vec2{ 26, 3 }, info_text, 0, ctx.getSize().x - 29);
@@ -138,7 +138,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             if (result.empty())
             {
                 stopPopup();
-                info_text = "nothing to insert.";
+                setStatusText("nothing to insert.");
                 return;
             }
             auto path = filesystem::path(result[0]);
@@ -155,7 +155,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     if (it == doc.figures.rbegin())
                     {
                         stopPopup();
-                        info_text = "nothing to insert.";
+                        setStatusText("nothing to insert.");
                         return;
                     }
                     inserted_text += (it - 1)->identifier;
@@ -169,7 +169,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                 else
                 {
                     stopPopup();
-                    info_text = "nothing to insert.";
+                    setStatusText("nothing to insert.");
                     return;
                 }
             }
@@ -184,7 +184,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                     if (it == doc.figures.begin())
                     {
                         stopPopup();
-                        info_text = "nothing to insert.";
+                        setStatusText("nothing to insert.");
                         return;
                     }
                     inserted_text += (it - 1)->identifier;
@@ -198,7 +198,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                 else
                 {
                     stopPopup();
-                    info_text = "nothing to insert.";
+                    setStatusText("nothing to insert.");
                     return;
                 }
             }
@@ -217,7 +217,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
         flagUnsaved();
         updateLines();
         stopPopup();
-        info_text = "ready.";
+        setStatusText("ready.");
     }
 }
 
@@ -259,7 +259,7 @@ void EditorDrawable::keyEventPopupUnsavedConfirm(KeyEvent& evt)
             runFileOpenDialog();
         }
         stopPopup();
-        info_text = "ready.";
+        setStatusText("ready.");
         updateLines();
     }
 }
