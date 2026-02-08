@@ -6,18 +6,21 @@ using namespace std;
 void EditorDrawable::updateLines()
 {
     doc.content = text_content;
-    doc.indexFigures();
+    doc.parse();
     // FIXME: this will need to be way faster (skip recalculating lines where possible)
 
     // wrap text and calculate cursor jump info
     lines.clear();
-    string line = "";
+    string line;
+    size_t wrap_width = transform.size.x - 4;
+    if (!show_line_checker)
+        ++wrap_width;
     for (char c : text_content)
     {
         if (c != '\n')
             line.push_back(c);
 
-        if (c == '\n' || line.size() >= transform.size.x - 4)
+        if (c == '\n' || line.size() >= wrap_width)
         {
             lines.push_back({ line, c == '\n' });
             line.clear();

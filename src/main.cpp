@@ -25,7 +25,7 @@ int main()
     EditorDrawable* e = new EditorDrawable();
     comp.insertDrawable(e);
 
-    constexpr std::chrono::duration<double> ideal_frame_time(1.0 / 24.0);
+    constexpr std::chrono::duration<double> ideal_frame_time(1.0 / 60.0);
     
     while (true)
     {

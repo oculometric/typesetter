@@ -313,5 +313,6 @@ void EditorDrawable::keyEventPopupSettings(KeyEvent& evt)
             *setting = false;
         else if (evt.key == 257)
             *setting = !(*setting);
+       updateLines();
     }
 }

@@ -80,15 +80,18 @@ private:
     
     Document doc;
 
-    // TODO: find tool [60]
     // TODO: generate unique IDs
+    // TODO: find tool [60]
+    // TODO: icon
+    // TODO: word wrapping
     // TODO: citation popup and list/bibliography [120]
-
+    // TODO: more animations
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
     // TODO: review undo history thing (probably broken)
     // TODO: syntax highlighting
     // TODO: ability to add custom font
+    // TODO: show popup if gl not available. option for CLI version. linux support
     
 public:
     EditorDrawable()
