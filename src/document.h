@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 struct Figure
 {
@@ -22,9 +23,11 @@ struct Tag
 struct Document
 {
     std::string content;
+    std::set<std::string> tag_ids; 
     std::vector<Figure> figures;
 
     // TODO: document parsing
     void parse();
+    std::string getUniqueID(std::string name);
     Tag extractTag(size_t& start_offset);
 };

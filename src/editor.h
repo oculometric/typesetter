@@ -80,17 +80,17 @@ private:
     
     Document doc;
 
-    // TODO: generate unique IDs
-    // TODO: find tool [60]
-    // TODO: icon
-    // TODO: word wrapping
-    // TODO: citation popup and list/bibliography [120]
     // TODO: more animations
+    // TODO: citation popup and list/bibliography [120]
+    // TODO: find tool [60]
+    // TODO: word wrapping
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
+    // TODO: figures should have captions
     // TODO: review undo history thing (probably broken)
     // TODO: syntax highlighting
     // TODO: ability to add custom font
+    // TODO: icon
     // TODO: show popup if gl not available. option for CLI version. linux support
     
 public:

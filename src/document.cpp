@@ -1,5 +1,7 @@
 #include "document.h"
 
+#include <ObjectArray.h>
+
 using namespace std;
 
 static size_t contextAwareFind(const string& find_target, const string& content, size_t start, size_t end)
@@ -38,15 +40,40 @@ void Document::parse()
     }
     
     // store all of this in a list of elements (text, bold, italic, header, tags)
-    
+    tag_ids.clear();
     figures.clear();
     for (auto& tag : tags)
     {
+        if (tag.params.contains("id"))
+            tag_ids.insert(tag.params["id"]);
         if (tag.type == "fig")
             figures.emplace_back(tag.start_offset, tag.params["id"], tag.params["image"]);
         // TODO: check for invalid tags
         // TODO: check each tag has all required params
     }
+}
+
+string Document::getUniqueID(string name)
+{
+    // generate a random number from the name
+    size_t seed = 0;
+    for (char c : name)
+        seed += c;
+    // seed RNG using the number
+    srand(seed);
+    
+    static const char* letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    // generate 8 letter (Aa) name
+    string id;
+    do
+    {
+        id.clear();
+        for (size_t i = 0; i < 8; ++i)
+            id.push_back(letters[rand() % strlen(letters)]);
+        // check if that name exists (if so, increment seed and repeat)
+    } while (tag_ids.contains(id));
+    
+    return id;
 }
 
 Tag Document::extractTag(size_t& start_offset)
@@ -65,7 +92,7 @@ Tag Document::extractTag(size_t& start_offset)
         {
             // TODO: throw error
             ++start_offset;
-            return {};
+            return { };
         }
         char c = content[current];
         if (state == 0)

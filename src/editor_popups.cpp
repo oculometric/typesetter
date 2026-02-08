@@ -143,7 +143,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             }
             auto path = filesystem::path(result[0]);
             auto doc_path = filesystem::path(file_path);
-            inserted_text = "%fig{image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + path.filename().string();
+            inserted_text = "%fig{image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + doc.getUniqueID(result[0]);
         }
         else if (popup_option_index == 1)
         {
