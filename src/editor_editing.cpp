@@ -15,18 +15,18 @@ void EditorDrawable::updateLines()
     size_t wrap_width = transform.size.x - 4;
     if (!show_line_checker)
         ++wrap_width;
-    for (char c : text_content)
+    for (const char c : text_content)
     {
         if (c != '\n')
             line.push_back(c);
 
         if (c == '\n' || line.size() >= wrap_width)
         {
-            lines.push_back({ line, c == '\n' });
+            lines.emplace_back(line, c == '\n');
             line.clear();
         }
     }
-    lines.push_back({ line, true });
+    lines.emplace_back(line, true);
 
     // recalculate cursor position based on index
     cursor_position = calculatePosition(cursor_index);
@@ -76,16 +76,16 @@ void EditorDrawable::insertReplace(char c)
     flagUnsaved();
 }
 
-void EditorDrawable::insert(size_t offset, char c)
+void EditorDrawable::insert(const size_t offset, const char c)
 {
-    text_content.insert(text_content.begin() + offset, c);
+    text_content.insert(text_content.begin() + static_cast<iter_difference_t>(offset), c);
     checkUndoHistoryState(CHANGE_REGULAR);
     flagUnsaved();
 }
 
 void EditorDrawable::erase(size_t offset)
 {
-    text_content.erase(text_content.begin() + offset);
+    text_content.erase(text_content.begin() + static_cast<iter_difference_t>(offset));
     checkUndoHistoryState(CHANGE_DELETE);
     flagUnsaved();
 }
@@ -139,43 +139,43 @@ void EditorDrawable::surroundSelection(char c)
     flagUnsaved();
 }
 
-Vec2 EditorDrawable::calculatePosition(size_t index) const
+Vec2 EditorDrawable::calculatePosition(const size_t index) const
 {
     Vec2 position = { 0, 0 };
     size_t i = index;
     size_t line_length = 0;
-    if (position.y < lines.size())
+    if (position.y < static_cast<int>(lines.size()))
     {
         line_length = lines[position.y].first.size();
         if (lines[position.y].second)
             ++line_length;
     }
-    while (position.y < lines.size() && i >= line_length)
+    while (position.y < static_cast<int>(lines.size()) && i >= line_length)
     {
         i -= line_length;
         ++position.y;
 
-        if (position.y < lines.size())
+        if (position.y < static_cast<int>(lines.size()))
         {
             line_length = lines[position.y].first.size();
             if (lines[position.y].second)
                 ++line_length;
         }
     }
-    position.x = i;
+    position.x = static_cast<int>(i);
 
     return position;
 }
 
 void EditorDrawable::cursorAdvanceLine()
 {
-    if (cursor_position.y + 1 < lines.size())
+    if (cursor_position.y + 1 < static_cast<int>(lines.size()))
     {
         cursor_index -= cursor_position.x;
         cursor_index += lines[cursor_position.y].first.size();
         if (lines[cursor_position.y].second)
             ++cursor_index;
-        cursor_index += min(cursor_position.x, (int)lines[cursor_position.y + 1].first.size());
+        cursor_index += min(cursor_position.x, static_cast<int>(lines[cursor_position.y + 1].first.size()));
     }
     else
         cursor_index = text_content.size();
@@ -189,7 +189,7 @@ void EditorDrawable::cursorRecedeLine()
         cursor_index -= lines[cursor_position.y - 1].first.size();
         if (lines[cursor_position.y - 1].second)
             --cursor_index;
-        cursor_index += min(cursor_position.x, (int)lines[cursor_position.y - 1].first.size());
+        cursor_index += min(cursor_position.x, static_cast<int>(lines[cursor_position.y - 1].first.size()));
     }
     else
         cursor_index = 0;
@@ -208,28 +208,28 @@ void EditorDrawable::checkUndoHistoryState(ChangeType change_type)
     if (change_type != CHANGE_CHECK)
         last_change = chrono::steady_clock::now();
     // FIXME: this is broken rn
-    return;
-    if (change_type != CHANGE_CHECK)
-        redo_history.clear();
-
-    if (change_type >= CHANGE_REGULAR)
-        ++changes_since_push;
-
-    // 2 = cut/paste/delete block
-    if (change_type == CHANGE_BLOCK)
-        pushUndoHistory();
-    else if ((change_type != CHANGE_CHECK) && (change_type != last_change_type) && (changes_since_push > 5))
-        pushUndoHistory();
-    else if (changes_since_push > 10)
-        pushUndoHistory();
-    else if (changes_since_push == 0)
-        last_push = chrono::steady_clock::now();
-    else
-    {
-        chrono::duration<float> time = chrono::steady_clock::now() - last_push;
-        if (time.count() > 60.0f)
-            pushUndoHistory();
-    }
+    // return;
+    // if (change_type != CHANGE_CHECK)
+    //     redo_history.clear();
+    //
+    // if (change_type >= CHANGE_REGULAR)
+    //     ++changes_since_push;
+    //
+    // // 2 = cut/paste/delete block
+    // if (change_type == CHANGE_BLOCK)
+    //     pushUndoHistory();
+    // else if ((change_type != CHANGE_CHECK) && (change_type != last_change_type) && (changes_since_push > 5))
+    //     pushUndoHistory();
+    // else if (changes_since_push > 10)
+    //     pushUndoHistory();
+    // else if (changes_since_push == 0)
+    //     last_push = chrono::steady_clock::now();
+    // else
+    // {
+    //     chrono::duration<float> time = chrono::steady_clock::now() - last_push;
+    //     if (time.count() > 60.0f)
+    //         pushUndoHistory();
+    // }
 }
 
 void EditorDrawable::pushUndoHistory()
@@ -263,7 +263,7 @@ void EditorDrawable::popRedoHistory()
     clearSelection();
 }
 
-int EditorDrawable::getCharacterType(size_t index) const
+int EditorDrawable::getCharacterType(const size_t index) const
 {
     char c = text_content[index];
     if (c >= 'a' && c <= 'z')
@@ -327,7 +327,8 @@ size_t EditorDrawable::findStartOfLine(size_t current) const
     {
         if (text_content[current - 1] == '\n')
             return current;
-        else --current;
+        else
+            --current;
     }
 
     while (current > 0 && text_content[current] != '\n')
@@ -339,7 +340,7 @@ size_t EditorDrawable::findStartOfLine(size_t current) const
 
 size_t EditorDrawable::countWords()
 {
-    chrono::duration<float> since_last_count = chrono::steady_clock::now() - last_word_count;
+    const chrono::duration<float> since_last_count = chrono::steady_clock::now() - last_word_count;
     if (since_last_count.count() < 2.0f)
         return last_counted_words;
 
@@ -348,7 +349,7 @@ size_t EditorDrawable::countWords()
     size_t index = 0;
     while (index < text_content.size())
     {
-        int char_type = getCharacterType(index);
+        const int char_type = getCharacterType(index);
         if (char_type != 0)
         {
             if (word_length > 0)
@@ -358,9 +359,7 @@ size_t EditorDrawable::countWords()
             }
         }
         else
-        {
             ++word_length;
-        }
         ++index;
     }
     if (word_length > 0)

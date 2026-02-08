@@ -4,15 +4,6 @@
 
 using namespace std;
 
-static size_t contextAwareFind(const string& find_target, const string& content, size_t start, size_t end)
-{
-    // TODO: make this aware of brackets, curly braces, and quotes
-    size_t result = content.find(find_target, start);
-    if (result >= end)
-        return string::npos;
-    return result;
-}
-
 void Document::parse()
 {
     vector<Tag> tags;
@@ -53,7 +44,7 @@ void Document::parse()
     }
 }
 
-string Document::getUniqueID(string name)
+string Document::getUniqueID(const string& name) const
 {
     // generate a random number from the name
     size_t seed = 0;
@@ -76,7 +67,7 @@ string Document::getUniqueID(string name)
     return id;
 }
 
-Tag Document::extractTag(size_t& start_offset)
+Tag Document::extractTag(size_t& start_offset) const
 {
     // find the end of the tag, and the closing brace (context-aware)
     size_t current = start_offset + 1;
@@ -94,7 +85,7 @@ Tag Document::extractTag(size_t& start_offset)
             ++start_offset;
             return { };
         }
-        char c = content[current];
+        const char c = content[current];
         if (state == 0)
         {
             // TODO: if c is not a letter char, throw error

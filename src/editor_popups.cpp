@@ -7,7 +7,7 @@
 using namespace STRN;
 using namespace std;
 
-const char* saturn_ascii = 
+static const char* saturn_ascii = 
 " .             "
 " .##           "
 "  #  ..        "
@@ -26,7 +26,7 @@ void EditorDrawable::startPopup(PopupIndex i)
     popup_index = i;
 }
 
-void EditorDrawable::stopPopup(bool reject_next_input)
+void EditorDrawable::stopPopup(const bool reject_next_input)
 {
     popup_state = CLOSING;
     popup_timer = 1.0f;
@@ -87,7 +87,7 @@ void EditorDrawable::drawPopupHelp(Context& ctx)
     ctx.drawText(Vec2{ 3, 18 }, "\\, R             : insert section reference");
 }
 
-void EditorDrawable::drawPopupFigure(Context& ctx)
+void EditorDrawable::drawPopupFigure(Context& ctx) const
 {
     pushTitlePalette(ctx);
     ctx.drawText(Vec2{ 2, 0 }, "[ FIGURE SELECTOR ]");
@@ -100,26 +100,27 @@ void EditorDrawable::drawPopupFigure(Context& ctx)
     ctx.drawText(Vec2{ 3, 6 }, "[ REFERENCE BY NAME ]", (popup_option_index == 3) ? 1 : 0);
     ctx.popPalette();
 
-    string info_text;
+    string summary_text;
     switch (popup_option_index)
     {
     case 0:
-        setStatusText("select a new image file to insert.");
+        summary_text = "select a new image file to insert.";
         break;
     case 1:
-        setStatusText("reference the next figure after the cursor");
+        summary_text = "reference the next figure after the cursor";
         break;
     case 2:
-        setStatusText("reference the last figure before the cursor.");
+        summary_text = "reference the last figure before the cursor.";
         break;
     case 3:
-        setStatusText("select an existing figure to reference.");
+        summary_text = "select an existing figure to reference.";
         break;
+    default: break;
     }
-    ctx.drawTextWrapped(Vec2{ 26, 3 }, info_text, 0, ctx.getSize().x - 29);
+    ctx.drawTextWrapped(Vec2{ 26, 3 }, summary_text, 0, ctx.getSize().x - 29);
 }
 
-void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
+void EditorDrawable::keyEventPopupFigure(const KeyEvent& evt)
 {
     if (evt.key == 265)
         popup_option_index = max(0, popup_option_index - 1);
@@ -141,8 +142,8 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
                 setStatusText("nothing to insert.");
                 return;
             }
-            auto path = filesystem::path(result[0]);
-            auto doc_path = filesystem::path(file_path);
+            const auto path = filesystem::path(result[0]);
+            const auto doc_path = filesystem::path(file_path);
             inserted_text = "%fig{image=" + filesystem::relative(path, doc_path.parent_path()).string() + ";id=" + doc.getUniqueID(result[0]);
         }
         else if (popup_option_index == 1)
@@ -163,7 +164,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             }
             if (inserted_text == "%figref{id=")
             {
-                auto first = doc.figures.begin();
+                const auto first = doc.figures.begin();
                 if (first->start_offset > cursor_index)
                     inserted_text += first->identifier;
                 else
@@ -192,7 +193,7 @@ void EditorDrawable::keyEventPopupFigure(KeyEvent& evt)
             }
             if (inserted_text == "%figref{id=")
             {
-                auto last = doc.figures.end() - 1;
+                const auto last = doc.figures.end() - 1;
                 if (last->start_offset < cursor_index)
                     inserted_text += last->identifier;
                 else
@@ -228,7 +229,7 @@ void EditorDrawable::drawPopupCitation(Context& ctx)
     ctx.popPalette();
 }
 
-void EditorDrawable::drawPopupUnsavedConfirm(Context& ctx)
+void EditorDrawable::drawPopupUnsavedConfirm(Context& ctx) const
 {
     pushTitlePalette(ctx);
     ctx.drawText(Vec2{ 2, 0 }, "[ UNSAVED CHANGES ]");
@@ -243,7 +244,7 @@ void EditorDrawable::drawPopupUnsavedConfirm(Context& ctx)
     ctx.popPalette();
 }
 
-void EditorDrawable::keyEventPopupUnsavedConfirm(KeyEvent& evt)
+void EditorDrawable::keyEventPopupUnsavedConfirm(const KeyEvent& evt)
 {
     if (evt.key == 263)
         popup_option_index = 0;
@@ -264,7 +265,7 @@ void EditorDrawable::keyEventPopupUnsavedConfirm(KeyEvent& evt)
     }
 }
 
-void EditorDrawable::drawPopupSettings(Context& ctx)
+void EditorDrawable::drawPopupSettings(Context& ctx) const
 {
     pushTitlePalette(ctx);
     ctx.drawText(Vec2{ 2, 0 }, "[ SETTINGS ]");
@@ -284,7 +285,7 @@ void EditorDrawable::drawPopupSettings(Context& ctx)
     ctx.popPalette();
 }
 
-void EditorDrawable::keyEventPopupSettings(KeyEvent& evt)
+void EditorDrawable::keyEventPopupSettings(const KeyEvent& evt)
 {
     if (evt.key == 265)
         popup_option_index = max(0, popup_option_index - 1);
@@ -304,6 +305,7 @@ void EditorDrawable::keyEventPopupSettings(KeyEvent& evt)
             else if (evt.key == 263)
                 distortion = max(0, distortion - 1);
             break;
+        default: break;
         }
         if (setting == nullptr)
             return;

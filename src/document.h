@@ -28,6 +28,6 @@ struct Document
 
     // TODO: document parsing
     void parse();
-    std::string getUniqueID(std::string name);
-    Tag extractTag(size_t& start_offset);
+    std::string getUniqueID(const std::string& name) const;
+    Tag extractTag(size_t& start_offset) const;
 };

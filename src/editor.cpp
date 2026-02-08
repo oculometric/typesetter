@@ -9,14 +9,7 @@
 using namespace STRN;
 using namespace std;
 
-bool isRenderable(int c)
-{
-    if (c >= ' ' && c <= '~')
-        return true;
-    return false;
-}
-
-void EditorDrawable::textEvent(unsigned int chr)
+void EditorDrawable::textEvent(const unsigned int chr)
 {
     if (popup_state != INACTIVE)
         return;
@@ -29,77 +22,8 @@ void EditorDrawable::textEvent(unsigned int chr)
         return;
 
     if (chr != '\\')
-        insertReplace(chr);
+        insertReplace(static_cast<char>(chr));
     updateLines();
-}
-
-void EditorDrawable::handleCtrlShortcut(KeyEvent& evt)
-{
-    switch (evt.key)
-    {
-    case ',':
-        startPopup(SETTINGS);
-        break;
-    case 'S':
-        triggerSave();
-        break;
-    case 'O':
-        if (has_unsaved_changes)
-        {
-            startPopup(UNSAVED_CONFIRM);
-            popup_option_index = 1;
-        }
-        else
-            runFileOpenDialog();
-        break;
-    case 'Z':
-        popUndoHistory();
-        if ((evt.modifiers & ~KeyEvent::CTRL) == KeyEvent::SHIFT)
-            popRedoHistory();
-        flagUnsaved();
-        break;
-    case 'H':
-        startPopup(HELP);
-        setStatusText("showing help.");
-        break;
-    case 'A':
-        selection_end_index = 0;
-        cursor_index = text_content.size();
-        break;
-    case 'C':
-    {
-        string clipboard = getSelection();
-        clipboardxx::clipboard c;
-        c << clipboard;
-        setStatusText("copied " + to_string(clipboard.size()) + " characters.");
-    }
-        break;
-    case 'X':
-    {
-        string clipboard = getSelection();
-        clipboardxx::clipboard c;
-        c << clipboard;
-        if (selection_end_index != cursor_index)
-        {
-            checkUndoHistoryState(CHANGE_BLOCK);
-            eraseSelection();
-        }
-        clearSelection();
-        flagUnsaved();
-        setStatusText("cut " + to_string(clipboard.size()) + " characters.");
-    }
-        break;
-    case 'V':
-    {
-        string clipboard;
-        clipboardxx::clipboard c;
-        c >> clipboard;
-        fixRN(clipboard);
-        insertReplace(clipboard);
-        setStatusText("pasted " + to_string(clipboard.size()) + " characters.");
-    }
-        break;
-    }
 }
 
 void EditorDrawable::keyEvent(KeyEvent& evt)
@@ -128,6 +52,7 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
             case SETTINGS:
                 keyEventPopupSettings(evt);
                 break;
+            default: break;
             }
             return;
         }
@@ -207,7 +132,6 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
                 }
                 break;
             }
-
             cursorRecedeLine();
             if (!(evt.modifiers & KeyEvent::SHIFT))
                 clearSelection();
@@ -222,7 +146,7 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
             }
             if (evt.modifiers & KeyEvent::CTRL)
             {
-                if (scroll + 1 < lines.size())
+                if (scroll + 1 < static_cast<int>(lines.size()))
                 {
                     ++scroll;
                     cursorAdvanceLine();
@@ -230,7 +154,6 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
                 }
                 break;
             }
-
             cursorAdvanceLine();
             if (!(evt.modifiers & KeyEvent::SHIFT))
                 clearSelection();
@@ -238,12 +161,82 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
         case 257: // enter/newline
             textEvent('\n');
             break;
+        default: break;
         }
         updateLines();
     }
 }
 
-void EditorDrawable::handleHotkeyFollowup(STRN::KeyEvent& evt)
+void EditorDrawable::handleCtrlShortcut(const KeyEvent& evt)
+{
+    switch (evt.key)
+    {
+    case ',':
+        startPopup(SETTINGS);
+        break;
+    case 'S':
+        triggerSave();
+        break;
+    case 'O':
+        if (has_unsaved_changes)
+        {
+            startPopup(UNSAVED_CONFIRM);
+            popup_option_index = 1;
+        }
+        else
+            runFileOpenDialog();
+        break;
+    case 'Z':
+        popUndoHistory();
+        if ((evt.modifiers & ~KeyEvent::CTRL) == KeyEvent::SHIFT)
+            popRedoHistory();
+        flagUnsaved();
+        break;
+    case 'H':
+        startPopup(HELP);
+        setStatusText("showing help.");
+        break;
+    case 'A':
+        selection_end_index = 0;
+        cursor_index = text_content.size();
+        break;
+    case 'C':
+        {
+        const string clipboard = getSelection();
+        const clipboardxx::clipboard c;
+        c.copy(clipboard);
+        setStatusText("copied " + to_string(clipboard.size()) + " characters.");
+        }
+        break;
+    case 'X':
+        {
+        const string clipboard = getSelection();
+        const clipboardxx::clipboard c;
+        c.copy(clipboard);
+        if (selection_end_index != cursor_index)
+        {
+            checkUndoHistoryState(CHANGE_BLOCK);
+            eraseSelection();
+        }
+        clearSelection();
+        flagUnsaved();
+        setStatusText("cut " + to_string(clipboard.size()) + " characters.");
+        }
+        break;
+    case 'V':
+        {
+        const clipboardxx::clipboard c;
+        string clipboard = c.paste();
+        fixRN(clipboard);
+        insertReplace(clipboard);
+        setStatusText("pasted " + to_string(clipboard.size()) + " characters.");
+        }
+        break;
+    default: break;
+    }
+}
+
+void EditorDrawable::handleHotkeyFollowup(const KeyEvent& evt)
 {
     setStatusText("ready.");
     switch (evt.key)
@@ -308,7 +301,7 @@ void EditorDrawable::triggerSave()
     if (!needs_save_as)
     {
         ofstream file_stream(file_path);
-        file_stream.write(text_content.data(), text_content.size());
+        file_stream.write(text_content.data(), static_cast<streamsize>(text_content.size()));
         pushUndoHistory();
         has_unsaved_changes = false;
     }
@@ -321,7 +314,7 @@ void EditorDrawable::triggerSave()
                                 pfd::opt::none);
         const string file = f.result();
         ofstream file_stream(file);
-        file_stream.write(text_content.data(), text_content.size());
+        file_stream.write(text_content.data(), static_cast<streamsize>(text_content.size()));
         pushUndoHistory();
         file_path = file;
         has_unsaved_changes = false;
@@ -339,7 +332,7 @@ void EditorDrawable::runFileOpenDialog()
     const auto result = f.result();
     if (!result.empty())
     {
-        const string file = result[0];
+        const string& file = result[0];
         if (filesystem::is_regular_file(file))
         {
             ifstream file_stream(file, ios::ate);
@@ -349,7 +342,7 @@ void EditorDrawable::runFileOpenDialog()
             text_content.resize(file_stream.tellg());
             fixRN(text_content);
             file_stream.seekg(ios::beg);
-            file_stream.read(text_content.data(), text_content.size());
+            file_stream.read(text_content.data(), static_cast<streamsize>(text_content.size()));
             undo_history.clear();
             redo_history.clear();
             pushUndoHistory();

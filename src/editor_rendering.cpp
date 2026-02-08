@@ -10,11 +10,11 @@ using namespace std;
 static string getMemorySize(size_t bytes)
 {
     if (bytes >= 2048ull * 1024 * 1024)
-        return format("{0:.1f} GiB", (float)bytes / (1024ull * 1024 * 1024));
+        return format("{0:.1f} GiB", static_cast<float>(bytes) / (1024.0f * 1024 * 1024));
     else if (bytes >= 2048ull * 1024)
-        return format("{0:.1f} MiB", (float)bytes / (1024ull * 1024));
+        return format("{0:.1f} MiB", static_cast<float>(bytes) / (1024.0f * 1024));
     else if (bytes >= 2048ull)
-        return format("{0:.1f} KiB", (float)bytes / 1024);
+        return format("{0:.1f} KiB", static_cast<float>(bytes) / 1024.0f);
     else
         return format("{0} B", bytes);
 }
@@ -26,20 +26,20 @@ void EditorDrawable::render(Context& ctx)
     int text_box_left = 1;
     if (!show_line_checker)
         --text_box_left;
-    int text_box_right = ctx.getSize().x - 1;
-    int text_box_top = 1;
+    const int text_box_right = ctx.getSize().x - 1;
+    constexpr int text_box_top = 1;
     int text_box_bottom = ctx.getSize().y - 2;
     if (!show_hints)
         ++text_box_bottom;
-    Vec2 text_box_size = { text_box_right - text_box_left, text_box_bottom - text_box_top };
+    const Vec2 text_box_size = { text_box_right - text_box_left, text_box_bottom - text_box_top };
 
-    int text_content_height = text_box_size.y - 2;
-    int text_left = text_box_left + 1;
-    int text_top = text_box_top + 1;
-    int text_content_width = text_box_size.x - 2;
+    const int text_content_height = text_box_size.y - 2;
+    const int text_left = text_box_left + 1;
+    constexpr int text_top = text_box_top + 1;
+    const int text_content_width = text_box_size.x - 2;
 
-    Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
-    int scrollbar_height = text_box_bottom - 1;
+    const Vec2 scrollbar_start = Vec2{ text_box_right, 1 };
+    const int scrollbar_height = text_box_bottom - 1;
 
     pushTextPalette(ctx);
 
@@ -50,21 +50,19 @@ void EditorDrawable::render(Context& ctx)
     static const string unsaved_editing = "[ IAPETUS ] (*) editing ";
     static const string saved_editing = "[ IAPETUS ] - editing ";
     ctx.drawText({ 1, 0 }, (has_unsaved_changes ? unsaved_editing : saved_editing) + filesystem::path(file_path).filename().string());
-    string file_size = getMemorySize(text_content.size());
+    const string file_size = getMemorySize(text_content.size());
     ctx.drawText(Vec2{ static_cast<int>(ctx.getSize().x - (file_size.size() + 2)), 0 }, file_size);
-    chrono::duration<float> since_last_edit = chrono::steady_clock::now() - last_change;
-    chrono::duration<float> since_epoch = chrono::steady_clock::now().time_since_epoch();
-    auto epoch = since_epoch.count();
+    const chrono::duration<float> since_last_edit = chrono::steady_clock::now() - last_change;
+    const chrono::duration<float> since_epoch = chrono::steady_clock::now().time_since_epoch();
     if (since_last_edit.count() < 1.0f && enable_animations)
-        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x07, (int)(epoch * 4) % 2);
+        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x07, static_cast<int>(since_epoch.count() * 4) % 2);
     else
         ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
     ctx.drawBox({ text_box_left, text_box_top }, text_box_size);
         
     // text content
     int actual_line = scroll + 1;
-    bool show_next_line = true;
-    for (int i = scroll; i < lines.size(); ++i)
+    for (int i = scroll; i < static_cast<int>(lines.size()); ++i)
     {
         if (i - scroll > text_content_height - 1)
             continue;
@@ -72,12 +70,7 @@ void EditorDrawable::render(Context& ctx)
         if (show_line_checker)
             ctx.draw(Vec2{ 0, i + text_top - scroll }, (actual_line % 2) ? 0xB0 : 0xB2, 2);
         if (lines[i].second)
-        {
             ++actual_line;
-            show_next_line = true;
-        }
-        else
-            show_next_line = false;
     }
 
     // cursor and selection
@@ -108,10 +101,10 @@ void EditorDrawable::render(Context& ctx)
     ctx.draw(scrollbar_start, 0xC2);
     ctx.fill(scrollbar_start + Vec2{ 0, 1 }, Vec2{ 1, scrollbar_height - 2 }, 0xB3);
     ctx.draw(scrollbar_start + Vec2{ 0, scrollbar_height - 1 }, 0xC1);
-    float start_fraction = static_cast<float>(scroll) / static_cast<float>(lines.size());
-    float end_fraction = min(static_cast<float>(scroll + ctx.getSize().y - 5) / static_cast<float>(lines.size()), 1.0f);
-    int start_y = static_cast<int>(ceil(start_fraction * scrollbar_height));
-    int end_y = static_cast<int>(floor((end_fraction - start_fraction) * scrollbar_height)) + start_y;
+    const float start_fraction = static_cast<float>(scroll) / static_cast<float>(lines.size());
+    const float end_fraction = min(static_cast<float>(scroll + ctx.getSize().y - 5) / static_cast<float>(lines.size()), 1.0f);
+    const int start_y = static_cast<int>(ceil(start_fraction * static_cast<float>(scrollbar_height)));
+    int end_y = static_cast<int>(floor((end_fraction - start_fraction) * static_cast<float>(scrollbar_height))) + start_y;
     if (end_y >= scrollbar_height && end_fraction < 1.0f)
         end_y = scrollbar_height - 1;
     ctx.fill(scrollbar_start + Vec2{ 0, start_y }, Vec2{ 1, min(end_y - start_y, scrollbar_height) }, 0xDB);
@@ -126,8 +119,8 @@ void EditorDrawable::render(Context& ctx)
     ctx.drawText({ 1, text_box_bottom }, info_text, 0, 0, enable_animations ? info_text_limit : -1);
     if (enable_animations)
         info_text_limit = min(info_text_limit + 8, info_text.size());
-    string words_count = to_string(countWords()) + " words.";
-    ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>((words_count.size() + 1)), text_box_bottom }, words_count);
+    const string words_count = to_string(countWords()) + " words.";
+    ctx.drawText(Vec2{ ctx.getSize().x - static_cast<int>(words_count.size() + 1), text_box_bottom }, words_count);
     if (show_hints)
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code  (S)ection  (R)eference section");
     ctx.popPalette();
@@ -150,9 +143,9 @@ void EditorDrawable::render(Context& ctx)
         {
             popup_timer = max(popup_timer - 0.33f, 0.0f);
             if (popup_state == OPENING)
-                size.y = (3.0f * popup_timer) + ((float)size.y * (1.0f - popup_timer));
+                size.y = static_cast<int>((3.0f * popup_timer) + (static_cast<float>(size.y) * (1.0f - popup_timer)));
             else if (popup_state == CLOSING)
-                size.y = ((float)size.y * popup_timer) + (3.0f * (1.0f - popup_timer));
+                size.y = static_cast<int>((static_cast<float>(size.y) * popup_timer) + (3.0f * (1.0f - popup_timer)));
             if (popup_timer <= 0.0f)
             {
                 if (popup_state == OPENING)
@@ -177,6 +170,7 @@ void EditorDrawable::render(Context& ctx)
             case INSERT_CITATION: drawPopupCitation(ctx); break;
             case UNSAVED_CONFIRM: drawPopupUnsavedConfirm(ctx); break;
             case SETTINGS: drawPopupSettings(ctx); break;
+            default: break;
             }
             pushButtonPalette(ctx);
             ctx.drawText(Vec2{ ctx.getSize().x - 18, ctx.getSize().y - 1 }, "[ ESC to close ]");

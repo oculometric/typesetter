@@ -18,14 +18,14 @@ private:
     STRN::Vec2 selection_end_position = { 0, 0 };
     int scroll = 0;
 
-    enum InputState
+    enum InputState : uint8_t
     {
         NORMAL_INPUT,
         REJECT_NEXT_INPUT,
         WAITING_FOR_HOTKEY
     };
     
-    enum PopupIndex
+    enum PopupIndex : int8_t
     {
         SPLASH = -1,
         HELP = 0,
@@ -36,7 +36,7 @@ private:
         FIND = 5
     };
     
-    enum PopupState
+    enum PopupState : uint8_t
     {
         INACTIVE = 0,
         ACTIVE = 1,
@@ -52,7 +52,7 @@ private:
     PopupIndex popup_index = SPLASH;
     int popup_option_index = 0;
 
-    enum ChangeType
+    enum ChangeType : int8_t
     {
         CHANGE_CHECK = -1,
         CHANGE_REGULAR = 0,
@@ -77,7 +77,7 @@ private:
     bool show_line_checker = true;
     bool show_hints = true;
     int distortion = 2;
-    const float distortion_options[5] = { 0.0f, 0.01f, 0.03f, 0.06f, 0.1f };
+    static constexpr float distortion_options[5] = { 0.0f, 0.01f, 0.03f, 0.06f, 0.1f };
     bool enable_animations = true;
     
     Document doc;
@@ -123,8 +123,8 @@ private:
     void cursorRecedeLine();
     void fixScroll();
 
-    void handleCtrlShortcut(STRN::KeyEvent& evt);
-    void handleHotkeyFollowup(STRN::KeyEvent& evt);
+    void handleCtrlShortcut(const STRN::KeyEvent& evt);
+    void handleHotkeyFollowup(const STRN::KeyEvent& evt);
 
     void checkUndoHistoryState(ChangeType change_type);
     void pushUndoHistory();
@@ -138,15 +138,15 @@ private:
 
     void startPopup(PopupIndex i);
     void stopPopup(bool reject_next_input = true);
-    void drawPopupHello(STRN::Context& ctx);
-    void drawPopupHelp(STRN::Context& ctx);
-    void drawPopupFigure(STRN::Context& ctx);
-    void keyEventPopupFigure(STRN::KeyEvent& evt);
-    void drawPopupCitation(STRN::Context& ctx);
-    void drawPopupUnsavedConfirm(STRN::Context& ctx);
-    void keyEventPopupUnsavedConfirm(STRN::KeyEvent& evt);
-    void drawPopupSettings(STRN::Context& ctx);
-    void keyEventPopupSettings(STRN::KeyEvent& evt);
+    static void drawPopupHello(STRN::Context& ctx);
+    static void drawPopupHelp(STRN::Context& ctx);
+    void drawPopupFigure(STRN::Context& ctx) const;
+    void keyEventPopupFigure(const STRN::KeyEvent& evt);
+    static void drawPopupCitation(STRN::Context& ctx);
+    void drawPopupUnsavedConfirm(STRN::Context& ctx) const;
+    void keyEventPopupUnsavedConfirm(const STRN::KeyEvent& evt);
+    void drawPopupSettings(STRN::Context& ctx) const;
+    void keyEventPopupSettings(const STRN::KeyEvent& evt);
 
     int getCharacterType(size_t index) const;
 
