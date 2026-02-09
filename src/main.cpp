@@ -5,6 +5,7 @@
 #include <strn.h>
 
 #include "editor.h"
+#include "../resource.h"
 
 using namespace STRN;
 using namespace std;
@@ -22,6 +23,15 @@ int main()
     try
     {
         NativeRasteriser comp(false);
+
+#if defined(_WIN32)
+        const HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG1), L"PNG");
+        const DWORD size = SizeofResource(nullptr, res);
+        const HGLOBAL data = LoadResource(nullptr, res);
+        vector<uint8_t> data_array(size);
+        memcpy(data_array.data(), data, size);
+        comp.setWindowIcon(data_array);
+#endif
         comp.setWindowTitle("IAPETUS");
         comp.setPalette(Palette{
             DEFAULT_COLOUR,

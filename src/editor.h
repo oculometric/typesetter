@@ -100,7 +100,6 @@ private:
     
     // --- STRN todos
     // TODO: ability to add custom font
-    // TODO: icon
     // TODO: option for CLI version
     
 public:

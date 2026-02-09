@@ -233,7 +233,11 @@
     <ResourceCompile Include="typesetter.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Downloads\iapetus-8.png" />
+    <Image Include="..\..\..\Downloads\iapetus.png" />
     <Image Include="..\..\..\Downloads\iapetus.ico" />
+    <Image Include="iapetus.ico" />
+    <Image Include="iapetus.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

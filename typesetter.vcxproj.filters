@@ -54,5 +54,17 @@
     <Image Include="..\..\..\Downloads\iapetus.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="..\..\..\Downloads\iapetus.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\iapetus-8.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="iapetus.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="iapetus.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
