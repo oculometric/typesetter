@@ -83,8 +83,8 @@ void EditorDrawable::drawPopupHelp(Context& ctx)
     ctx.drawText(Vec2{ 3, 16 }, "\\, I             : italic selection");
     ctx.drawText(Vec2{ 3, 17 }, "\\, M             : insert math block");
     ctx.drawText(Vec2{ 3, 18 }, "\\, X             : insert code block");
-    ctx.drawText(Vec2{ 3, 18 }, "\\, S             : insert section marker");
-    ctx.drawText(Vec2{ 3, 18 }, "\\, R             : insert section reference");
+    ctx.drawText(Vec2{ 3, 19 }, "\\, S             : insert section marker");
+    ctx.drawText(Vec2{ 3, 20 }, "\\, R             : insert section reference");
 }
 
 void EditorDrawable::drawPopupFigure(Context& ctx) const
@@ -316,5 +316,58 @@ void EditorDrawable::keyEventPopupSettings(const KeyEvent& evt)
         else if (evt.key == 257)
             *setting = !(*setting);
        updateLines();
+    }
+}
+
+void EditorDrawable::drawPopupFind(Context& ctx) const
+{
+    pushTitlePalette(ctx);
+    ctx.drawText(Vec2{ 2, 0 }, "[ FIND ]");
+    ctx.popPalette();
+    
+    ctx.drawText(Vec2{ 3, 2 }, "> " + find_str, 0, 0, ctx.getSize().x - 4);
+    ctx.draw(Vec2{ 5 + static_cast<int>(find_str.size()), 2 }, ' ', 1);
+    
+    pushButtonPalette(ctx);
+    ctx.drawText(Vec2{ 2, ctx.getSize().y - 1 }, "[ ENTER/SHIFT+ENTER TO ADVANCE ]");
+    ctx.popPalette();
+}
+
+void EditorDrawable::textEventPopupFind(unsigned int chr)
+{
+    find_str.push_back(chr);
+}
+
+void EditorDrawable::keyEventPopupFind(const KeyEvent& evt)
+{
+    if (evt.key == 257)
+    {
+        if (find_str.empty())
+            return;
+        
+        size_t offset;
+        if (evt.modifiers == KeyEvent::SHIFT)
+        {
+            if (cursor_index > 0)
+                offset = text_content.rfind(find_str, cursor_index - 1);
+            else
+                offset = string::npos;
+        }
+        else
+            offset = text_content.find(find_str, cursor_index + 1);
+        
+        if (offset == string::npos)
+            setStatusText("nothing more to find.");
+        else
+        {
+            cursor_index = offset;
+            cursor_position = calculatePosition(cursor_index);
+            clearSelection();
+        }
+    }
+    else if (evt.key == 259)
+    {
+        if (!find_str.empty())
+            find_str.pop_back();
     }
 }

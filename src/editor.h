@@ -51,6 +51,7 @@ private:
     float popup_timer = 0;
     PopupIndex popup_index = SPLASH;
     int popup_option_index = 0;
+    std::string find_str;
 
     enum ChangeType : int8_t
     {
@@ -83,13 +84,14 @@ private:
     Document doc;
 
     // TODO: citation popup and list/bibliography [120]
-    // TODO: find tool [60]
+    // TODO: section reference should present picker
     // TODO: word wrapping
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
     // TODO: figures should have captions
     // TODO: review undo history thing (probably broken)
     // TODO: syntax highlighting
+    
     // TODO: ability to add custom font
     // TODO: icon
     // TODO: show popup if gl not available. option for CLI version. linux support
@@ -99,8 +101,7 @@ public:
     { pushUndoHistory(); }
 
     void textEvent(unsigned int chr);
-
-    void keyEvent(STRN::KeyEvent& evt);
+    void keyEvent(const STRN::KeyEvent& evt);
 
     void render(STRN::Context& ctx) override;
 
@@ -147,6 +148,9 @@ private:
     void keyEventPopupUnsavedConfirm(const STRN::KeyEvent& evt);
     void drawPopupSettings(STRN::Context& ctx) const;
     void keyEventPopupSettings(const STRN::KeyEvent& evt);
+    void drawPopupFind(STRN::Context& ctx) const;
+    void textEventPopupFind(unsigned int chr);
+    void keyEventPopupFind(const STRN::KeyEvent& evt);
 
     int getCharacterType(size_t index) const;
 

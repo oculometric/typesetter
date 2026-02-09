@@ -12,7 +12,11 @@ using namespace std;
 void EditorDrawable::textEvent(const unsigned int chr)
 {
     if (popup_state != INACTIVE)
+    {
+        if (popup_index == FIND)
+            textEventPopupFind(chr);
         return;
+    }
     if (input_state == REJECT_NEXT_INPUT)
     {
         input_state = NORMAL_INPUT;
@@ -26,7 +30,7 @@ void EditorDrawable::textEvent(const unsigned int chr)
     updateLines();
 }
 
-void EditorDrawable::keyEvent(KeyEvent& evt)
+void EditorDrawable::keyEvent(const KeyEvent& evt)
 {
     if (evt.pressed)
     {
@@ -51,6 +55,9 @@ void EditorDrawable::keyEvent(KeyEvent& evt)
                 break;
             case SETTINGS:
                 keyEventPopupSettings(evt);
+                break;
+            case FIND:
+                keyEventPopupFind(evt);
                 break;
             default: break;
             }
@@ -171,6 +178,9 @@ void EditorDrawable::handleCtrlShortcut(const KeyEvent& evt)
 {
     switch (evt.key)
     {
+    case 'F':
+        startPopup(FIND);
+        break;
     case ',':
         startPopup(SETTINGS);
         break;

@@ -43,7 +43,7 @@ void EditorDrawable::render(Context& ctx)
 
     pushTextPalette(ctx);
 
-    if (popup_state != INACTIVE)
+    if (popup_state != INACTIVE && popup_index != FIND)
         pushSubtextPalette(ctx);
 
     // header
@@ -74,7 +74,7 @@ void EditorDrawable::render(Context& ctx)
     }
 
     // cursor and selection
-    if (popup_state == INACTIVE)
+    if (popup_state == INACTIVE || popup_index == FIND)
     {
         if (selection_end_index != cursor_index)
         {
@@ -125,7 +125,7 @@ void EditorDrawable::render(Context& ctx)
         ctx.drawText({ 1, text_box_bottom + 1 }, "(Ctrl + H)elp  (F)igure  (C)itation  (B)old  (I)talic  (M)ath  (X)code  (S)ection  (R)eference section");
     ctx.popPalette();
     
-    if (popup_state != INACTIVE)
+    if (popup_state != INACTIVE && popup_index != FIND)
         ctx.popPalette();
 
     if (popup_state != INACTIVE && popup_state != ACTIVE && !enable_animations)
@@ -138,6 +138,12 @@ void EditorDrawable::render(Context& ctx)
     if (popup_state != INACTIVE)
     {
         Vec2 size = ctx.getSize() - Vec2{ 12, 6 };
+        if (popup_index == UNSAVED_CONFIRM)
+            size.y = 8;
+        else if (popup_index == FIND)
+            size.y = 5;
+        else if (popup_index == SPLASH)
+            size.y = 19;
         
         if (popup_state != ACTIVE)
         {
@@ -155,6 +161,8 @@ void EditorDrawable::render(Context& ctx)
             }
         }
         Vec2 position = ((ctx.getSize() - size) / 2);
+        if (popup_index == FIND)
+            position.y = 2;
         
         ctx.pushBounds(position, position + size);
         ctx.drawBox(Vec2{ 0, 0 }, ctx.getSize());
@@ -170,6 +178,7 @@ void EditorDrawable::render(Context& ctx)
             case INSERT_CITATION: drawPopupCitation(ctx); break;
             case UNSAVED_CONFIRM: drawPopupUnsavedConfirm(ctx); break;
             case SETTINGS: drawPopupSettings(ctx); break;
+            case FIND: drawPopupFind(ctx); break;
             default: break;
             }
             pushButtonPalette(ctx);
