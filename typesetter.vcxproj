@@ -62,9 +62,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release TUI|x64'">
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>iapetus-typesetter-tui</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release GUI|x64'">
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>iapetus-typesetter-gui</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -138,9 +140,6 @@
     <ResourceCompile Include="typesetter.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\Downloads\iapetus-8.png" />
-    <Image Include="..\..\..\Downloads\iapetus.png" />
-    <Image Include="..\..\..\Downloads\iapetus.ico" />
     <Image Include="iapetus.ico" />
     <Image Include="iapetus.png" />
   </ItemGroup>

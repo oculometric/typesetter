@@ -292,10 +292,12 @@ void EditorDrawable::drawPopupSettings(Context& ctx) const
     ctx.drawText(Vec2{ 3, 4 }, (show_hints ? enabled : disabled) + " - hotkey hints", (popup_option_index == 1) ? 1 : 0);
     ctx.drawText(Vec2{ 3, 5 }, (enable_animations ? enabled : disabled) + " - UI animations", (popup_option_index == 2) ? 1 : 0);
     
+#if defined(GUI)
     string distortion_str(5, '\xC4');
     distortion_str[distortion] = '\xFE';
     distortion_str += format("  [ {:.2f} ]", distortion_options[distortion]);
     ctx.drawText(Vec2{ 3, 7 }, distortion_str + " - screen distortion", (popup_option_index == 3) ? 1 : 0);
+#endif
     ctx.popPalette();
 }
 
@@ -304,7 +306,11 @@ void EditorDrawable::keyEventPopupSettings(const KeyEvent& evt)
     if (evt.key == 265)
         popup_option_index = max(0, popup_option_index - 1);
     else if (evt.key == 264)
+#if defined(GUI)
         popup_option_index = min(3, popup_option_index + 1);
+#else
+        popup_option_index = min(2, popup_option_index + 1);
+#endif
     else if (evt.key == 263 || evt.key == 262 || evt.key == 257)
     {
         bool* setting = nullptr;
