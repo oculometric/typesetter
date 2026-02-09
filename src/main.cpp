@@ -19,51 +19,62 @@ int main()
 #if defined(_WIN32)
     FreeConsole();
 #endif
-    
-    NativeRasteriser comp(false);
-    comp.setWindowTitle("IAPETUS");
-    comp.setPalette(Palette{
-        DEFAULT_COLOUR,
-        DEFAULT_INVERTED,
-        FG_BLACK | BG_LIGHT_GREY
-        });
-    comp.setScaleFactor(2.0f);
-    EditorDrawable* e = new EditorDrawable();
-    comp.insertDrawable(e);
-
-    constexpr std::chrono::duration<double> ideal_frame_time(1.0 / 60.0);
-    
-    while (true)
+    try
     {
-        auto last = std::chrono::high_resolution_clock::now();
-        if (comp.update())
-            break;
-        static Vec2 last_size = Vec2{ 0, 0 };
-        if (comp.getSize() != last_size)
+        NativeRasteriser comp(false);
+        comp.setWindowTitle("IAPETUS");
+        comp.setPalette(Palette{
+            DEFAULT_COLOUR,
+            DEFAULT_INVERTED,
+            FG_BLACK | BG_LIGHT_GREY
+            });
+        comp.setScaleFactor(2.0f);
+        EditorDrawable* e = new EditorDrawable();
+        comp.insertDrawable(e);
+
+        constexpr std::chrono::duration<double> ideal_frame_time(1.0 / 60.0);
+    
+        while (true)
         {
-            last_size = comp.getSize();
-            e->setSize(last_size);
-            e->setPosition({ 0, 0 });
-            e->updateLines();
+            auto last = std::chrono::high_resolution_clock::now();
+            if (comp.update())
+                break;
+            static Vec2 last_size = Vec2{ 0, 0 };
+            if (comp.getSize() != last_size)
+            {
+                last_size = comp.getSize();
+                e->setSize(last_size);
+                e->setPosition({ 0, 0 });
+                e->updateLines();
+            }
+            comp.render();
+            comp.present();
+            KeyEvent key = comp.getKeyEvent();
+            while (key.key != 0)
+            {
+                e->keyEvent(key);
+                key = comp.getKeyEvent();
+            }
+            unsigned int chr = comp.getCharEvent();
+            while (chr != 0)
+            {
+                e->textEvent(chr);
+                chr = comp.getCharEvent();
+            }
+            comp.setDistortion(e->getDistortion());
+            auto now = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> duration = now - last;        
+            auto sleep_duration = ideal_frame_time - duration;
+            std::this_thread::sleep_for(sleep_duration); // prevents us from spinning too hard
         }
-        comp.render();
-        comp.present();
-        KeyEvent key = comp.getKeyEvent();
-        while (key.key != 0)
-        {
-            e->keyEvent(key);
-            key = comp.getKeyEvent();
-        }
-        unsigned int chr = comp.getCharEvent();
-        while (chr != 0)
-        {
-            e->textEvent(chr);
-            chr = comp.getCharEvent();
-        }
-        comp.setDistortion(e->getDistortion());
-        auto now = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> duration = now - last;        
-        auto sleep_duration = ideal_frame_time - duration;
-        std::this_thread::sleep_for(sleep_duration); // prevents us from spinning too hard
+    } catch (exception e)
+    {
+#if defined(_WIN32)
+        const size_t WCHARBUF = 100;
+        const char *szSource = e.what();
+        wchar_t  wszDest[WCHARBUF];
+        MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, szSource, -1, wszDest, WCHARBUF);
+        MessageBox(NULL, wszDest, NULL, 0);
+#endif
     }
 }

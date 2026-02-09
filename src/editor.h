@@ -99,7 +99,6 @@ private:
     // TODO: syntax highlighting
     
     // --- STRN todos
-    // TODO: show popup if gl not available
     // TODO: ability to add custom font
     // TODO: icon
     // TODO: option for CLI version
