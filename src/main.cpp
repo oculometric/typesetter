@@ -18,12 +18,16 @@ using namespace std;
 int main()
 {
 #if defined(_WIN32)
+#if defined(GUI)
     FreeConsole();
+#else
+    SetConsoleTitle(L"IAPETUS");
+#endif
 #endif
     try
     {
+#if defined(GUI)
         NativeRasteriser comp(false);
-
 #if defined(_WIN32)
         const HRSRC res = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG1), L"PNG");
         const DWORD size = SizeofResource(nullptr, res);
@@ -33,12 +37,16 @@ int main()
         comp.setWindowIcon(data_array);
 #endif
         comp.setWindowTitle("IAPETUS");
+        comp.setScaleFactor(2.0f);
+#else
+        TerminalRasteriser comp;
+#endif
+
         comp.setPalette(Palette{
             DEFAULT_COLOUR,
             DEFAULT_INVERTED,
             FG_BLACK | BG_LIGHT_GREY
             });
-        comp.setScaleFactor(2.0f);
         EditorDrawable* e = new EditorDrawable();
         comp.insertDrawable(e);
 
@@ -71,7 +79,9 @@ int main()
                 e->textEvent(chr);
                 chr = comp.getCharEvent();
             }
+#if defined(GUI)
             comp.setDistortion(e->getDistortion());
+#endif
             auto now = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> duration = now - last;        
             auto sleep_duration = ideal_frame_time - duration;

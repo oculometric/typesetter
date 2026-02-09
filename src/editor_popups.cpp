@@ -200,7 +200,7 @@ void EditorDrawable::keyEventPopupFigure(const KeyEvent& evt)
             if (inserted_text == "%figref{id=")
             {
                 const auto last = doc.figures.end() - 1;
-                if (last->start_offset < cursor_index)
+                if (!doc.figures.empty() && last->start_offset < cursor_index)
                     inserted_text += last->identifier;
                 else
                 {

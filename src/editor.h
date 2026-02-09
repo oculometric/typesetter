@@ -99,8 +99,7 @@ private:
     
     // --- STRN todos
     // TODO: ability to add custom font
-    // TODO: option for CLI version
-    
+
 public:
     EditorDrawable()
     { pushUndoHistory(); }

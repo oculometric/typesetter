@@ -55,7 +55,7 @@ void EditorDrawable::render(Context& ctx)
     const chrono::duration<float> since_last_edit = chrono::steady_clock::now() - last_change;
     const chrono::duration<float> since_epoch = chrono::steady_clock::now().time_since_epoch();
     if (since_last_edit.count() < 1.0f && enable_animations)
-        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x07, static_cast<int>(since_epoch.count() * 4) % 2);
+        ctx.draw({ ctx.getSize().x - 1, 0 }, 0x04, static_cast<int>(since_epoch.count() * 4) % 2);
     else
         ctx.draw({ ctx.getSize().x - 1, 0 }, 0x03);
     ctx.drawBox({ text_box_left, text_box_top }, text_box_size);

@@ -21,7 +21,7 @@ void EditorDrawable::updateLines()
         if (c != '\n')
             line.push_back(c);
 
-        if (c == '\n' || line.size() >= wrap_width)
+        if (c == '\n' || line.size() >= wrap_width || c == '\0')
         {
             lines.emplace_back(line, c == '\n');
             line.clear();
