@@ -393,6 +393,7 @@ void EditorDrawable::drawPopupPicker(Context& ctx) const
     switch (sub_popup_passthrough)
     {
     case 0: title = "[ FIGURE SELECTOR ]"; break;
+    case 1: title = "[ SECTION SELECTOR ]"; break;
     }
     ctx.drawText(Vec2{ 2, 0 }, title);
     ctx.popPalette();
@@ -413,16 +414,44 @@ void EditorDrawable::drawPopupPicker(Context& ctx) const
         ctx.drawText(Vec2{ 3, y }, "end of list");
         ctx.popPalette();
     }
+    else if (sub_popup_passthrough == 1)
+    {
+        pushButtonPalette(ctx);
+        int y = 3;
+        for (size_t i = popup_option_index; i < doc.sections.size(); ++i)
+        {
+            if (y >= ctx.getSize().y - 4)
+                break;
+            ctx.drawText(Vec2{ 3, y }, "[ " + doc.sections[i].identifier + " ]", i == popup_option_index);
+            ++y;
+        }
+        ctx.popPalette();
+        pushSubtextPalette(ctx);
+        ctx.drawText(Vec2{ 3, y }, "end of list");
+        ctx.popPalette();
+    }
 }
 
 void EditorDrawable::keyEventPopupPicker(const KeyEvent& evt)
 {
+    size_t array_size = 0;
+    switch (sub_popup_passthrough)
+    {
+    case 0: array_size = doc.figures.size(); break;
+    case 1: array_size = doc.sections.size(); break;
+    }
+    
     if (evt.key == 265)
         popup_option_index = max(0, popup_option_index - 1);
     else if (evt.key == 264)
-        popup_option_index = min(doc.figures.empty() ? 0 : doc.figures.size() - 1, popup_option_index + 1);
+        popup_option_index = min((array_size == 0) ? 0 : array_size - 1, popup_option_index + 1);
     else if (evt.key == 257)
     {
+        if (sub_popup_passthrough == 1)
+        {
+            insertReplace("%sectref{id=" + doc.sections[popup_option_index].identifier + "}");
+            updateLines();
+        }
         sub_popup_passthrough = popup_option_index;
         stopPopup();
     }

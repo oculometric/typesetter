@@ -87,7 +87,6 @@ private:
     Document doc;
 
     // --- mandatory todos
-    // TODO: section reference should present picker
     // TODO: citation popup and list/bibliography [120]
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]

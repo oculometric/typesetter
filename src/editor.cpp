@@ -290,14 +290,14 @@ void EditorDrawable::handleHotkeyFollowup(const KeyEvent& evt)
         clearSelection();
         break;
     case 'S':
-        insertReplace("%section{id=\"\"}");
-        cursor_index -= 2;
+        insertReplace("%section{id=}");
+        cursor_index -= 1;
         clearSelection();
         break;
     case 'R':
-        insertReplace("%sectref{id=\"\"}");
-        cursor_index -= 2;
-        clearSelection();
+        sub_popup_passthrough = 1;
+        popup_option_index = 0;
+        startPopup(PICKER);
         break;
     case '\\':
         insertReplace('\\');

@@ -39,6 +39,7 @@ bool Document::parse()
     
     // store all of this in a list of elements (text, bold, italic, header, tags)
     tag_ids.clear();
+    sections.clear();
     figures.clear();
     for (auto& tag : tags)
     {
@@ -53,7 +54,6 @@ bool Document::parse()
                 parsing_error_desc = "'figref' tag missing 'id' param";
                 return false;
             }
-            tag_ids.insert(id);
         }
         else if (tag.type == "sectref")
         {
@@ -66,7 +66,6 @@ bool Document::parse()
                 parsing_error_desc = "'sectref' tag missing 'id' param";
                 return false;
             }
-            tag_ids.insert(id);
         }
         else if (tag.type == "fig")
         {
@@ -102,9 +101,20 @@ bool Document::parse()
         else if (tag.type == "bib")
         {
         }
-        else if (tag.type == "sect")
+        else if (tag.type == "section")
         {
+            string id;
+            if (tag.params.contains("id"))
+                id = tag.params["id"];
+            else
+            {
+                parsing_error_position = tag.start_offset;
+                parsing_error_desc = "'sect' tag missing 'id' param";
+                return false;
+            }
+            tag_ids.insert(id);
             
+            sections.emplace_back(tag.start_offset, id);
         }
         else if (tag.type == "cite")
         {
