@@ -6,7 +6,8 @@ using namespace std;
 void EditorDrawable::updateLines()
 {
     doc.content = text_content;
-    doc.parse();
+    if (!doc.parse())
+        setStatusText("document parsing error: " + doc.parsing_error_desc);
     // FIXME: this will need to be way faster (skip recalculating lines where possible)
 
     // wrap text and calculate cursor jump info

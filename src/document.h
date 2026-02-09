@@ -25,9 +25,10 @@ struct Document
     std::string content;
     std::set<std::string> tag_ids; 
     std::vector<Figure> figures;
+    size_t parsing_error_position = -1;
+    std::string parsing_error_desc;
 
-    // TODO: document parsing
-    void parse();
+    bool parse();
     std::string getUniqueID(const std::string& name) const;
-    Tag extractTag(size_t& start_offset) const;
+    Tag extractTag(size_t& start_offset);
 };

@@ -88,7 +88,6 @@ private:
 
     // --- mandatory todos
     // TODO: section reference should present picker
-    // TODO: document parsing error handling
     // TODO: citation popup and list/bibliography [120]
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
@@ -100,6 +99,7 @@ private:
     // TODO: syntax highlighting
     
     // --- STRN todos
+    // TODO: transparent window
     // TODO: ability to add custom font
     // TODO: icon
     // TODO: show popup if gl not available. option for CLI version. linux support

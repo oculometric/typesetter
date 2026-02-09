@@ -76,6 +76,11 @@ void EditorDrawable::render(Context& ctx)
     // cursor and selection
     if (popup_state == INACTIVE || popup_index == FIND)
     {
+        if (doc.parsing_error_position != (size_t)-1)
+        {
+            ctx.drawColour(calculatePosition(doc.parsing_error_position) + Vec2{ text_left, text_top - scroll }, BG_RED | FG_BLACK);
+        }
+        
         if (selection_end_index != cursor_index)
         {
             Vec2 selection_pos = selection_end_position;

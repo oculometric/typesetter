@@ -4,8 +4,11 @@
 
 using namespace std;
 
-void Document::parse()
+bool Document::parse()
 {
+    parsing_error_position = -1;
+    parsing_error_desc = "";
+    
     vector<Tag> tags;
     size_t offset = 0;
     // step through the document
@@ -14,7 +17,11 @@ void Document::parse()
         if (content[offset] == '%')
         {
             // identify % tags
-            tags.push_back(extractTag(offset));
+            Tag t = extractTag(offset);
+            if (t.start_offset == (size_t)-1)
+                return false;
+            tags.push_back(t);
+            ++offset;
         }
         // identify other formations (bold, italic, header)
         else if (content[offset] == '*')
@@ -35,13 +42,83 @@ void Document::parse()
     figures.clear();
     for (auto& tag : tags)
     {
-        if (tag.params.contains("id"))
-            tag_ids.insert(tag.params["id"]);
-        if (tag.type == "fig")
-            figures.emplace_back(tag.start_offset, tag.params["id"], tag.params["image"]);
-        // TODO: check for invalid tags
-        // TODO: check each tag has all required params
+        if (tag.type == "figref")
+        {
+            string id;
+            if (tag.params.contains("id"))
+                id = tag.params["id"];
+            else
+            {
+                parsing_error_position = tag.start_offset;
+                parsing_error_desc = "'figref' tag missing 'id' param";
+                return false;
+            }
+            tag_ids.insert(id);
+        }
+        else if (tag.type == "sectref")
+        {
+            string id;
+            if (tag.params.contains("id"))
+                id = tag.params["id"];
+            else
+            {
+                parsing_error_position = tag.start_offset;
+                parsing_error_desc = "'sectref' tag missing 'id' param";
+                return false;
+            }
+            tag_ids.insert(id);
+        }
+        else if (tag.type == "fig")
+        {
+            string id;
+            if (tag.params.contains("id"))
+                id = tag.params["id"];
+            else
+            {
+                parsing_error_position = tag.start_offset;
+                parsing_error_desc = "'fig' tag missing 'id' param";
+                return false;
+            }
+            tag_ids.insert(id);
+            
+            string image;
+            if (tag.params.contains("image"))
+                image = tag.params["image"];
+            else
+            {
+                parsing_error_position = tag.start_offset;
+                parsing_error_desc = "'fig' tag missing 'image' param";
+                return false;
+            }
+            
+            figures.emplace_back(tag.start_offset, id, image);
+        }
+        else if (tag.type == "title")
+        {
+        }
+        else if (tag.type == "config")
+        {
+        }
+        else if (tag.type == "bib")
+        {
+        }
+        else if (tag.type == "sect")
+        {
+            
+        }
+        else if (tag.type == "cite")
+        {
+            
+        }
+        else
+        {
+            parsing_error_position = tag.start_offset;
+            parsing_error_desc = "unrecognised tag type";
+            return false;
+        }
     }
+    
+    return parsing_error_position == (size_t)-1;
 }
 
 string Document::getUniqueID(const string& name) const
@@ -67,7 +144,7 @@ string Document::getUniqueID(const string& name) const
     return id;
 }
 
-Tag Document::extractTag(size_t& start_offset) const
+Tag Document::extractTag(size_t& start_offset)
 {
     // find the end of the tag, and the closing brace (context-aware)
     size_t current = start_offset + 1;
@@ -81,18 +158,23 @@ Tag Document::extractTag(size_t& start_offset) const
     {
         if (current >= content.size())
         {
-            // TODO: throw error
-            ++start_offset;
-            return { };
+            parsing_error_position = start_offset;
+            parsing_error_desc = "incomplete tag";
+            return { (size_t)-1 };
         }
         const char c = content[current];
         if (state == 0)
         {
-            // TODO: if c is not a letter char, throw error
             if (c == '{')
             {
                 open_curly = current;
                 state = 1;
+            }
+            else if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+            {
+                parsing_error_position = current;
+                parsing_error_desc = "invalid character in tag type";
+                return { (size_t)-1 };
             }
         }
         else if (state == 1)
@@ -106,8 +188,7 @@ Tag Document::extractTag(size_t& start_offset) const
             {
                 if (c == '\"')
                     inside_quotes = true;
-                // TODO: if c is not a letter/number char, or " ; = _ -, throw error
-                if (c == ';')
+                else if (c == ';')
                 {
                     semicolon_tracker.emplace_back(current, current_equals);
                     current_equals = -1;
@@ -118,13 +199,21 @@ Tag Document::extractTag(size_t& start_offset) const
                         current_equals = current;
                     else
                     {
-                        // TODO: throw error
+                        parsing_error_position = current;
+                        parsing_error_desc = "only one '=' token permitted per statement";
+                        return { (size_t)-1 };
                     }
                 }
                 else if (c == '}')
                 {
                     close_curly = current;
                     break;
+                }
+                else if (!(c == '_' || c == '-' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')))
+                {
+                    parsing_error_position = current;
+                    parsing_error_desc = "invalid character inside tag";
+                    return { (size_t)-1 };
                 }
             }
         }
@@ -134,8 +223,13 @@ Tag Document::extractTag(size_t& start_offset) const
     
     // store offsets and info for each tag
     Tag result;
-    // TODO: check for zero size tag type and throw error
     result.type = content.substr(start_offset + 1, open_curly - start_offset - 1);
+    if (result.type.empty())
+    {
+        parsing_error_position = start_offset;
+        parsing_error_desc = "missing tag type";
+        return { (size_t)-1 };
+    }
     result.start_offset = start_offset;
     result.size = close_curly - start_offset;
 
