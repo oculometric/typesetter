@@ -99,10 +99,10 @@ private:
     // TODO: syntax highlighting
     
     // --- STRN todos
-    // TODO: transparent window
+    // TODO: show popup if gl not available
     // TODO: ability to add custom font
     // TODO: icon
-    // TODO: show popup if gl not available. option for CLI version. linux support
+    // TODO: option for CLI version
     
 public:
     EditorDrawable()

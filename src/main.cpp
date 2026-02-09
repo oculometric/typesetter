@@ -9,13 +9,19 @@
 using namespace STRN;
 using namespace std;
 
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#endif
 
 int main()
 {
+#if defined(_WIN32)
     FreeConsole();
-    NativeRasteriser comp;
+#endif
+    
+    NativeRasteriser comp(false);
+    comp.setWindowTitle("IAPETUS");
     comp.setPalette(Palette{
         DEFAULT_COLOUR,
         DEFAULT_INVERTED,
