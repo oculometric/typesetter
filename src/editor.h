@@ -29,11 +29,12 @@ private:
     {
         SPLASH = -1,
         HELP = 0,
-        INSERT_FIGURE = 1,
-        INSERT_CITATION = 2,
-        UNSAVED_CONFIRM = 3,
-        SETTINGS = 4,
-        FIND = 5
+        INSERT_FIGURE,
+        INSERT_CITATION,
+        UNSAVED_CONFIRM,
+        SETTINGS,
+        FIND,
+        PICKER,
     };
     
     enum PopupState : uint8_t
@@ -50,7 +51,9 @@ private:
     PopupState popup_state = ACTIVE;
     float popup_timer = 0;
     PopupIndex popup_index = SPLASH;
+    std::vector<PopupIndex> stacked_popups;
     int popup_option_index = 0;
+    int sub_popup_passthrough = 0;
     std::string find_str;
 
     enum ChangeType : int8_t
@@ -83,15 +86,20 @@ private:
     
     Document doc;
 
-    // TODO: citation popup and list/bibliography [120]
+    // --- mandatory todos
     // TODO: section reference should present picker
-    // TODO: word wrapping
+    // TODO: document parsing error handling
+    // TODO: citation popup and list/bibliography [120]
     // TODO: concrete specification [120]
     // TODO: pdf generation [240]
-    // TODO: figures should have captions
     // TODO: review undo history thing (probably broken)
+    // TODO: figures should have captions
+    
+    // --- optional todos
+    // TODO: word wrapping
     // TODO: syntax highlighting
     
+    // --- STRN todos
     // TODO: ability to add custom font
     // TODO: icon
     // TODO: show popup if gl not available. option for CLI version. linux support
@@ -151,6 +159,8 @@ private:
     void drawPopupFind(STRN::Context& ctx) const;
     void textEventPopupFind(unsigned int chr);
     void keyEventPopupFind(const STRN::KeyEvent& evt);
+    void drawPopupPicker(STRN::Context& ctx) const;
+    void keyEventPopupPicker(const STRN::KeyEvent& evt);
 
     int getCharacterType(size_t index) const;
 

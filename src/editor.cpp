@@ -38,6 +38,7 @@ void EditorDrawable::keyEvent(const KeyEvent& evt)
         {
             if (evt.key == 256)
             {
+                sub_popup_passthrough = -1;
                 stopPopup(false);
                 setStatusText("ready.");
             }
@@ -58,6 +59,9 @@ void EditorDrawable::keyEvent(const KeyEvent& evt)
                 break;
             case FIND:
                 keyEventPopupFind(evt);
+                break;
+            case PICKER:
+                keyEventPopupPicker(evt);
                 break;
             default: break;
             }

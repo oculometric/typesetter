@@ -138,12 +138,21 @@ void EditorDrawable::render(Context& ctx)
     if (popup_state != INACTIVE)
     {
         Vec2 size = ctx.getSize() - Vec2{ 12, 6 };
-        if (popup_index == UNSAVED_CONFIRM)
+        switch (popup_index)
+        {
+        case UNSAVED_CONFIRM:
             size.y = 8;
-        else if (popup_index == FIND)
+            break;
+        case FIND:
             size.y = 5;
-        else if (popup_index == SPLASH)
+            break;
+        case SPLASH:
             size.y = 19;
+            break;
+        case INSERT_FIGURE:
+            size.y = 10;
+            break;
+        }
         
         if (popup_state != ACTIVE)
         {
@@ -157,7 +166,17 @@ void EditorDrawable::render(Context& ctx)
                 if (popup_state == OPENING)
                     popup_state = ACTIVE;
                 else if (popup_state == CLOSING)
-                    popup_state = INACTIVE;
+                {
+                    if (!stacked_popups.empty())
+                    {
+                        popup_state = ACTIVE;
+                        popup_index = *(stacked_popups.end() - 1);
+                        stacked_popups.pop_back();
+                        keyEvent(KeyEvent{ -1, true });
+                    }
+                    else
+                        popup_state = INACTIVE;
+                }
             }
         }
         Vec2 position = ((ctx.getSize() - size) / 2);
@@ -179,6 +198,7 @@ void EditorDrawable::render(Context& ctx)
             case UNSAVED_CONFIRM: drawPopupUnsavedConfirm(ctx); break;
             case SETTINGS: drawPopupSettings(ctx); break;
             case FIND: drawPopupFind(ctx); break;
+            case PICKER: drawPopupPicker(ctx); break;
             default: break;
             }
             pushButtonPalette(ctx);

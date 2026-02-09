@@ -21,6 +21,10 @@ static const char* saturn_ascii =
 
 void EditorDrawable::startPopup(PopupIndex i)
 {
+    if (popup_state == OPENING || popup_state == CLOSING)
+        return;
+    if (popup_state == ACTIVE)
+        stacked_popups.push_back(popup_index);
     popup_state = OPENING;
     popup_timer = 1.0f;
     popup_index = i;
@@ -28,6 +32,8 @@ void EditorDrawable::startPopup(PopupIndex i)
 
 void EditorDrawable::stopPopup(const bool reject_next_input)
 {
+    if (popup_state == OPENING || popup_state == CLOSING)
+        return;
     popup_state = CLOSING;
     popup_timer = 1.0f;
     if (reject_next_input)
@@ -206,16 +212,24 @@ void EditorDrawable::keyEventPopupFigure(const KeyEvent& evt)
         }
         else if (popup_option_index == 3)
         {
-            // TODO: show a list of figures to choose from
+            sub_popup_passthrough = 0;
+            popup_option_index = 0;
+            startPopup(PICKER);
+            return;
         }
         else
             return;
         inserted_text =  inserted_text + "}";
-        text_content.insert(cursor_index, inserted_text);
-        cursor_index += inserted_text.size();
-        clearSelection();
-        checkUndoHistoryState(CHANGE_BLOCK);
-        flagUnsaved();
+        insertReplace(inserted_text);
+        updateLines();
+        stopPopup();
+        setStatusText("ready.");
+    }
+    else if (evt.key == -1)
+    {
+        if (sub_popup_passthrough == -1 || sub_popup_passthrough >= doc.figures.size())
+            return;
+        insertReplace("%figref{id=" + doc.figures[sub_popup_passthrough].identifier + "}");
         updateLines();
         stopPopup();
         setStatusText("ready.");
@@ -369,5 +383,47 @@ void EditorDrawable::keyEventPopupFind(const KeyEvent& evt)
     {
         if (!find_str.empty())
             find_str.pop_back();
+    }
+}
+
+void EditorDrawable::drawPopupPicker(Context& ctx) const
+{
+    pushTitlePalette(ctx);
+    string title = "[ SELECTOR ]";
+    switch (sub_popup_passthrough)
+    {
+    case 0: title = "[ FIGURE SELECTOR ]"; break;
+    }
+    ctx.drawText(Vec2{ 2, 0 }, title);
+    ctx.popPalette();
+    
+    if (sub_popup_passthrough == 0)
+    {
+        pushButtonPalette(ctx);
+        int y = 3;
+        for (size_t i = popup_option_index; i < doc.figures.size(); ++i)
+        {
+            if (y >= ctx.getSize().y - 4)
+                break;
+            ctx.drawText(Vec2{ 3, y }, "[ " + doc.figures[i].target_path + " ]", i == popup_option_index);
+            ++y;
+        }
+        ctx.popPalette();
+        pushSubtextPalette(ctx);
+        ctx.drawText(Vec2{ 3, y }, "end of list");
+        ctx.popPalette();
+    }
+}
+
+void EditorDrawable::keyEventPopupPicker(const KeyEvent& evt)
+{
+    if (evt.key == 265)
+        popup_option_index = max(0, popup_option_index - 1);
+    else if (evt.key == 264)
+        popup_option_index = min(doc.figures.empty() ? 0 : doc.figures.size() - 1, popup_option_index + 1);
+    else if (evt.key == 257)
+    {
+        sub_popup_passthrough = popup_option_index;
+        stopPopup();
     }
 }
