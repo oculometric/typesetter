@@ -31,7 +31,8 @@ $(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 
 $(EXE_OUT): $(CC_FILES_OUT)
 	@echo "Linking" $@
-	@$(LD) $(LD_FLAGS) -o $(EXE_OUT) $^ $(LD_INCLUDE)
+	@ld -r -b binary -o $(BIN_DIR)icon.png.o iapetus.png
+	@$(LD) $(LD_FLAGS) -o $(EXE_OUT) $(BIN_DIR)icon.png.o $^ $(LD_INCLUDE)
 
 build: $(EXE_OUT)
 

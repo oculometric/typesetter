@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <cstring>
 
 #include <strn.h>
 
@@ -13,6 +14,9 @@ using namespace std;
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#else
+extern char _binary_iapetus_png_start[];
+extern char _binary_iapetus_png_end[];
 #endif
 
 int main()
@@ -34,8 +38,11 @@ int main()
         const HGLOBAL data = LoadResource(nullptr, res);
         vector<uint8_t> data_array(size);
         memcpy(data_array.data(), data, size);
-        comp.setWindowIcon(data_array);
+#else
+        vector<uint8_t> data_array(_binary_iapetus_png_end - _binary_iapetus_png_start);
+        memcpy(data_array.data(), _binary_iapetus_png_start, data_array.size());
 #endif
+        comp.setWindowIcon(data_array);
         comp.setWindowTitle("IAPETUS");
         comp.setScaleFactor(2.0f);
 #else
