@@ -3,12 +3,12 @@ BIN_DIR			:= bin/
 OBJ_DIR			:= bin/obj/
 
 CC				:= g++
-CC_FLAGS		:= -std=c++20 -g -Wall -O3 -D NDEBUG
-CC_INCLUDE		:= -I lib/inc
+CC_FLAGS		:= -std=c++20 -g -Wall -O3 -D NDEBUG -D GUI
+CC_INCLUDE		:= -I lib/inc -I lib/strn/inc
 
 LD				:= g++
 LD_FLAGS		:= -g
-LD_INCLUDE		:= -lglfw -L lib -lstrn
+LD_INCLUDE		:= -lglfw -lxcb -L lib -L lib/strn/bin -lstrn
 
 DEP_FLAGS		:= -MMD -MP
 
@@ -16,7 +16,7 @@ CC_FILES_IN		:= $(wildcard $(SRC_DIR)*.cpp)
 CC_FILES_OUT	:= $(patsubst $(SRC_DIR)%.cpp, $(OBJ_DIR)%.o, $(CC_FILES_IN))
 CC_FILES_DEP	:= $(patsubst $(SRC_DIR)%.cpp, $(OBJ_DIR)%.d, $(CC_FILES_IN))
 
-EXE_OUT			:= $(BIN_DIR)tuiypesetter
+EXE_OUT			:= $(BIN_DIR)iapetus-typesetter-gui
 
 .PHONY: clean $(BIN_DIR) $(OBJ_DIR)
 

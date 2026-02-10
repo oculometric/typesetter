@@ -79,14 +79,14 @@ void EditorDrawable::insertReplace(char c)
 
 void EditorDrawable::insert(const size_t offset, const char c)
 {
-    text_content.insert(text_content.begin() + static_cast<iter_difference_t>(offset), c);
+    text_content.insert(text_content.begin() + offset, c);
     checkUndoHistoryState(CHANGE_REGULAR);
     flagUnsaved();
 }
 
 void EditorDrawable::erase(size_t offset)
 {
-    text_content.erase(text_content.begin() + static_cast<iter_difference_t>(offset));
+    text_content.erase(text_content.begin() + offset);
     checkUndoHistoryState(CHANGE_DELETE);
     flagUnsaved();
 }

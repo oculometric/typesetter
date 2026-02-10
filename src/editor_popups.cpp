@@ -450,7 +450,7 @@ void EditorDrawable::keyEventPopupPicker(const KeyEvent& evt)
     if (evt.key == 265)
         popup_option_index = max(0, popup_option_index - 1);
     else if (evt.key == 264)
-        popup_option_index = min((array_size == 0) ? 0 : array_size - 1, popup_option_index + 1);
+        popup_option_index = min((array_size == 0) ? 0 : static_cast<int>(array_size) - 1, popup_option_index + 1);
     else if (evt.key == 257)
     {
         if (sub_popup_passthrough == 1)

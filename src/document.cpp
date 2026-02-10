@@ -1,6 +1,6 @@
 #include "document.h"
 
-#include <ObjectArray.h>
+#include <cstring>
 
 using namespace std;
 

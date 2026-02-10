@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <portable-file-dialogs/portable-file-dialogs.h>
+#include <math.h>
 
 using namespace STRN;
 using namespace std;

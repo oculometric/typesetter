@@ -1,0 +1,3 @@
+[submodule "lib/strn"]
+	path = lib/strn
+	url = https://github.com/oculometric/strn
